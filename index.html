@@ -2,8 +2,9 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NUMERASIYU - Responsif</title>
+    <!-- Viewport setting untuk mencegah zoom yang tidak disengaja dan memastikan skala 1:1 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>NUMERASIYU - Auto Adaptif</title>
     
     <!-- Memuat Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -11,647 +12,613 @@
     <!-- Memuat Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 
-    <!-- Memuat pustaka jsQR untuk decoding QR -->
+    <!-- Memuat pustaka jsQR -->
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     
     <style>
-        /* Menggunakan font Inter */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            overscroll-behavior: none; /* Mencegah pull-to-refresh di mobile */
-        }
         
-        /* Menyembunyikan halaman yang tidak aktif */
-        .page.hidden {
-            display: none;
+        :root {
+            /* Fallback untuk browser yang tidak support dvh */
+            --vh: 1vh; 
         }
 
-        /* Hamparan Izin Sensor */
-        #sensor-permission-overlay {
-            display: flex; /* Tampil default sampai di-handle JS */
-            position: fixed;
-            inset: 0;
-            background-color: rgba(0, 0, 0, 0.85);
-            z-index: 9998;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 1rem;
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Mencegah perilaku bounce scroll default di iOS */
+            overscroll-behavior: none; 
+            /* Menggunakan Dynamic Viewport Height agar pas di layar mobile browser modern */
+            height: 100dvh; 
+            width: 100vw;
+            overflow: hidden;
         }
         
-        /* Style khusus untuk pemindai QR */
-        #qr-video, #qr-canvas {
-            display: none;
+        .page.hidden { display: none; }
+
+        /* Utilitas Transisi Halus */
+        .transition-layout {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
+
+        /* Scanner Styles */
         #qr-scanner-container {
-            overflow: hidden;
             background-color: #000;
+            position: relative;
         }
         #qr-video {
-            position: absolute;
-            top: 0;
-            left: 0;
             width: 100%;
             height: 100%;
-            object-fit: cover; /* Memastikan video mengisi area tanpa distorsi */
+            object-fit: cover; /* KUNCI: Video mengisi container tanpa gepeng */
             display: block;
         }
-        
-        /* Animasi Pulse untuk Scanner */
-        @keyframes scan-pulse {
-            0%, 100% { opacity: 0.3; }
-            50% { opacity: 1; }
+
+        /* Animasi Laser Scanner */
+        @keyframes scan-line {
+            0% { top: 10%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 90%; opacity: 0; }
         }
-        .animate-scan-pulse {
-            animation: scan-pulse 2s infinite;
+        .scan-laser {
+            position: absolute;
+            left: 10%;
+            right: 10%;
+            height: 2px;
+            background: #ef4444;
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
+            animation: scan-line 2s infinite linear;
+            pointer-events: none;
         }
     </style>
 </head>
-<body class="bg-gray-100 h-screen w-screen overflow-hidden flex flex-col">
+<body class="bg-gray-50 text-gray-800 flex flex-col">
 
-    <!-- Hamparan Izin Sensor -->
-    <div id="sensor-permission-overlay">
-        <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full transform transition-all m-4">
-            <div class="flex justify-center mb-4">
-                <div class="bg-blue-100 p-4 rounded-full">
-                    <i data-lucide="scan-face" class="w-10 h-10 text-blue-600"></i>
-                </div>
+    <!-- Hamparan Izin Sensor (Overlay) -->
+    <div id="sensor-permission-overlay" class="fixed inset-0 bg-black/90 z-[9999] flex flex-col items-center justify-center p-6 transition-opacity duration-300">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl max-w-xs w-full text-center space-y-4">
+            <div class="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                <i data-lucide="scan-face" class="w-8 h-8 text-blue-600"></i>
             </div>
-            <h2 class="text-xl font-bold text-gray-800 text-center mb-2">Selamat Datang!</h2>
-            <p class="text-gray-600 text-center mb-4 text-sm">
-                Untuk pengalaman terbaik, izinkan akses sensor & kamera.
-            </p>
-            
-            <div class="space-y-2 mb-6 text-left bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs">
-                <div class="flex items-center">
-                    <i data-lucide="smartphone" class="w-4 h-4 text-blue-500 mr-2"></i>
-                    <span>Orientasi Layar & AR</span>
-                </div>
-                <div class="flex items-center">
-                    <i data-lucide="camera" class="w-4 h-4 text-purple-500 mr-2"></i>
-                    <span>Kamera (QR Scanner)</span>
-                </div>
-            </div>
-
-            <button id="grant-permission-button" class="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 active:scale-95 transition duration-200 flex items-center justify-center gap-2">
-                <span>Mulai Aplikasi</span>
+            <h2 class="text-xl font-bold text-gray-900">Selamat Datang!</h2>
+            <p class="text-sm text-gray-500">Aplikasi ini membutuhkan akses kamera dan sensor gerak untuk fitur interaktif.</p>
+            <button id="grant-permission-button" class="w-full bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 active:scale-95 transition-transform flex items-center justify-center gap-2">
+                <span>Mulai Sekarang</span>
                 <i data-lucide="arrow-right" class="w-4 h-4"></i>
             </button>
-            <p id="permission-status" class="text-[10px] text-gray-400 mt-2 text-center italic h-4"></p>
+            <p id="permission-status" class="text-[10px] text-gray-400 italic min-h-[1rem]"></p>
         </div>
     </div>
 
-    <!-- Container Utama Aplikasi (Awalnya disembunyikan) -->
-    <div id="app-container" class="bg-white flex flex-col w-full h-full" style="display: none;">
-
-        <!-- Konten Utama (Halaman yang bisa diganti) -->
-        <main class="flex-grow p-2 md:p-4 overflow-hidden relative">
-
-            <!-- Halaman Awal (Page 1) - Responsif -->
-            <div id="page-awal" class="page h-full w-full relative rounded-xl overflow-hidden" 
-                 style="background-image: url('https://cdn.pixabay.com/photo/2021/05/05/11/43/modern-6230891_1280.png'); background-size: cover; background-position: center;">
-                
-                <!-- Overlay Gelap agar teks terbaca -->
-                <div class="absolute inset-0 bg-black/10"></div>
-
-                <div class="flex flex-col items-center justify-center text-center h-full relative z-10 bg-white/90 backdrop-blur-sm p-6 m-4 md:m-10 rounded-2xl shadow-2xl border border-white/50 max-w-2xl mx-auto">
-                    <img src="https://unnes.ac.id/lppm/wp-content/uploads/sites/16/2015/08/Logo-Transparan-Warna-1.png" 
-                         alt="Logo UNNES" 
-                         class="w-28 md:w-40 h-auto mb-4 md:mb-6 hover:scale-105 transition-transform duration-300"
-                         onerror="this.src='https://placehold.co/200x200/F9E45B/003399?text=UNNES'; this.onerror=null;">
-                    
-                    <div class="bg-white px-6 py-3 md:px-8 md:py-4 rounded-xl shadow-inner border-l-4 border-blue-500 mb-4 md:mb-6">
-                        <h1 class="text-2xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-yellow-500">NUMERASIYU</h1>
-                    </div>
-                    
-                    <p class="text-gray-800 font-semibold text-sm md:text-lg">Media Pembelajaran Interaktif</p>
-                    <p class="text-gray-500 text-xs md:text-sm mt-2">Gunakan menu di bawah untuk navigasi.</p>
-                    
-                    <!-- Indikator Status Sensor -->
-                    <div class="mt-6 flex gap-2 text-[10px] md:text-xs text-gray-500 bg-gray-100 py-1 px-3 rounded-full border border-gray-200">
-                        <span class="flex items-center gap-1"><div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div> Sistem Siap</span>
-                    </div>
+    <!-- Container Utama -->
+    <div id="app-container" class="flex flex-col w-full h-full hidden">
+        
+        <!-- Area Konten Utama -->
+        <main class="flex-grow relative overflow-hidden w-full h-full">
+            
+            <!-- PAGE 1: BERANDA -->
+            <div id="page-awal" class="page w-full h-full relative flex flex-col items-center justify-center p-6">
+                <!-- Background Image dengan Overlay -->
+                <div class="absolute inset-0 z-0">
+                    <img src="https://cdn.pixabay.com/photo/2021/05/05/11/43/modern-6230891_1280.png" class="w-full h-full object-cover opacity-20" alt="Background">
+                    <div class="absolute inset-0 bg-gradient-to-b from-white/0 via-white/50 to-white"></div>
                 </div>
-            </div>
 
-            <!-- Halaman Materi (Page 2) - Responsif -->
-            <div id="page-materi" class="page hidden flex flex-col h-full">
-                <h2 class="text-lg md:text-xl font-semibold mb-2 text-green-600 flex items-center gap-2 px-2">
-                    <i data-lucide="book-open" class="w-5 h-5"></i> Materi & Scan
-                </h2>
-                
-                <!-- Container scroll-snap Vertikal -->
-                <div class="flex-grow flex flex-col overflow-y-auto snap-y snap-mandatory gap-4 pb-2">
-                
-                    <!-- Atas: Materi Iframe (Tinggi menyesuaikan) -->
-                    <div class="w-full flex-shrink-0 h-[60vh] md:h-full border-2 border-green-500 rounded-lg bg-gray-50 overflow-hidden snap-start relative shadow-md">
-                         <div class="absolute top-2 right-2 z-10 bg-white px-2 py-1 rounded text-[10px] font-bold text-green-600 shadow opacity-80">Slide Materi</div>
-                        <iframe src="https://www.canva.com/design/DAG4vcThXDs/0x7N7lcxNemZgrtoXQ5JJg/view?embed" 
-                                class="w-full h-full" 
-                                frameborder="0" 
-                                allow="fullscreen"
-                                title="Materi Numerasiyu">
-                        </iframe>
-                    </div>
-
-                    <!-- Bawah: Pemindai QR (Tinggi menyesuaikan) -->
-                    <div class="w-full flex-shrink-0 h-[50vh] md:h-full flex flex-col p-3 border-2 border-blue-500 rounded-lg bg-white items-center snap-start shadow-md relative">
-                        <div class="w-12 h-1 bg-gray-300 rounded-full mb-2 md:hidden"></div> <!-- Handle bar visual -->
-                        
-                        <h3 class="text-sm md:text-lg font-semibold text-center text-blue-800 mb-2 flex items-center gap-2">
-                            <i data-lucide="scan-line" class="w-4 h-4"></i> Pemindai QR
-                        </h3>
-                        
-                        <!-- UI Pemindai -->
-                        <div id="qr-scanner-ui" class="w-full flex flex-col flex-grow justify-center min-h-0 relative">
-                            
-                            <!-- Pesan Status -->
-                            <div id="qr-status-message" class="text-center text-xs text-gray-600 p-4 border-2 border-dashed rounded-lg bg-gray-50">
-                                Kamera nonaktif.
-                            </div>
-
-                            <!-- Wadah Video Pemindai -->
-                            <div id="qr-scanner-container" class="mb-2 w-full flex-grow relative rounded-lg overflow-hidden shadow-inner bg-black" style="display: none;">
-                                <video id="qr-video" playsinline></video>
-                                
-                                <!-- Overlay Visual Pemindai -->
-                                <div class="absolute inset-0 border-2 border-blue-400/50 pointer-events-none m-6 md:m-10 rounded-lg"></div>
-                                <div class="absolute top-1/2 left-6 right-6 h-0.5 bg-red-500 shadow-[0_0_8px_rgba(255,0,0,0.8)] animate-scan-pulse pointer-events-none"></div>
-                                
-                                <!-- Overlay Data Sensor HUD -->
-                                <div id="orientation-hud" class="absolute top-2 left-2 right-2 flex flex-col gap-1 items-start pointer-events-none z-20">
-                                    <div class="bg-black/60 text-white p-1.5 rounded text-[9px] md:text-[10px] font-mono backdrop-blur-sm border border-white/20 w-full">
-                                        <p class="font-bold text-yellow-400 mb-0.5 flex items-center gap-1"><i data-lucide="compass" class="w-3 h-3"></i> ABSOLUTE</p>
-                                        <div class="grid grid-cols-3 gap-1">
-                                            <p id="hud-alpha">A:--</p>
-                                            <p id="hud-beta">B:--</p>
-                                            <p id="hud-gamma">G:--</p>
-                                        </div>
-                                    </div>
-                                    <div class="bg-black/60 text-white p-1.5 rounded text-[9px] md:text-[10px] font-mono backdrop-blur-sm border border-white/20 w-full">
-                                        <p class="font-bold text-green-400 mb-0.5 flex items-center gap-1"><i data-lucide="gamepad-2" class="w-3 h-3"></i> ROTATION</p>
-                                        <p id="hud-game-quaternion" class="truncate">Waiting...</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Wadah Hasil Pindaian -->
-                            <div id="qr-result-container" class="w-full flex-grow flex flex-col min-h-0" style="display: none;">
-                                <p class="text-gray-700 text-xs font-semibold mb-1 flex items-center gap-1">
-                                    <i data-lucide="check-circle" class="w-3 h-3 text-green-500"></i> Hasil:
-                                </p>
-                                
-                                <!-- Wrapper untuk Pratinjau + Tombol -->
-                                <div class="flex-1 flex flex-col md:flex-row gap-2 min-h-0">
-                                    
-                                    <!-- Wrapper Kiri: Pratinjau -->
-                                    <div class="flex-1 min-h-0 min-w-0 border rounded-md overflow-hidden bg-gray-50">
-                                        <div id="qr-iframe-preview" class="w-full h-full" style="display: none;">
-                                            <iframe id="qr-outputFrame" class="w-full h-full" frameborder="0"></iframe>
-                                        </div>
-                                        <div id="qr-data-preview" class="w-full h-full" style="display: none;">
-                                            <textarea id="qr-outputData" class="w-full h-full p-2 bg-transparent text-gray-800 font-mono text-xs resize-none outline-none" readonly></textarea>
-                                        </div>
-                                    </div>
-
-                                    <!-- Wrapper Kanan: Tombol Aksi (Horizontal di mobile, vertical di desktop) -->
-                                    <div class="flex flex-row md:flex-col gap-2 justify-center">
-                                        <button id="qr-copyButton" class="bg-green-500 text-white p-2 rounded shadow hover:bg-green-600 flex-1 md:flex-none flex justify-center"><i data-lucide="copy" class="w-4 h-4"></i></button>
-                                        <button id="qr-scanAgainButton" class="bg-blue-500 text-white p-2 rounded shadow hover:bg-blue-600 flex-1 md:flex-none flex justify-center"><i data-lucide="camera" class="w-4 h-4"></i></button>
-                                        <a id="qr-openLinkButton" href="#" target="_blank" class="bg-purple-500 text-white p-2 rounded shadow hover:bg-purple-600 flex-1 md:flex-none flex justify-center" style="display:none;"><i data-lucide="external-link" class="w-4 h-4"></i></a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Halaman Asesmen/Kuis (Page 3) - Responsif -->
-            <div id="page-asesmen" class="page hidden flex flex-col h-full">
-                <h2 class="text-lg md:text-xl font-semibold mb-2 text-red-600 flex items-center gap-2 px-2">
-                    <i data-lucide="calculator" class="w-5 h-5"></i> Asesmen
-                </h2>
-                <div class="flex-grow border-2 border-red-500 rounded-lg bg-gray-50 overflow-hidden shadow-md">
-                   <iframe src="https://wayground.com/embed/quiz/66dc55162cbae50f1111bf98" 
-                            class="w-full h-full" 
-                            frameborder="0" 
-                            allow="fullscreen"
-                            title="Asesmen Numerasiyu">
-                    </iframe>
-                </div>
-            </div>
-
-            <!-- Halaman Profil (Page 4) - Responsif (Portrait: Stack, Landscape: Side-by-Side) -->
-            <div id="page-profil" class="page hidden flex flex-col h-full">
-                <h2 class="text-lg md:text-xl font-semibold mb-2 text-yellow-600 flex items-center gap-2 px-2">
-                    <i data-lucide="user-circle" class="w-5 h-5"></i> Profil
-                </h2>
-                
-                <!-- Gunakan flex-col untuk Mobile/Portrait, dan md:flex-row untuk Desktop/Landscape -->
-                <div class="flex-grow rounded-lg bg-gradient-to-b from-yellow-50 to-white border-2 border-yellow-500 flex flex-col md:flex-row overflow-hidden shadow-md">
-                    
-                    <!-- Area Teks -->
-                    <div class="flex-1 p-4 md:p-8 overflow-y-auto order-2 md:order-1">
-                        <h3 class="text-xl md:text-2xl font-bold text-blue-900 mb-4 border-b pb-2">Pengembang</h3>
-                        
-                        <div class="space-y-3">
-                            <div class="bg-blue-50 p-3 rounded-lg border border-blue-100">
-                                <p class="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Mahasiswa</p>
-                                <p class="text-lg font-bold text-gray-800">Yusril Yahya Muhaimin</p>
-                            </div>
-                            
-                            <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Pembimbing</p>
-                                <p class="text-base font-medium text-gray-800">Prof. Dr. Sri Wardani, M.Si.</p>
-                            </div>
-                            
-                            <div class="mt-4 text-xs md:text-sm text-gray-600 bg-white p-2 rounded border border-gray-100 shadow-sm">
-                                <p class="font-medium">Program Studi Pendidikan Dasar</p>
-                                <p>Sekolah Pascasarjana</p>
-                                <p>Universitas Negeri Semarang</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Area Logo (Di atas pada portrait, di kanan pada landscape) -->
-                    <div class="w-full md:w-1/3 flex flex-col items-center justify-center p-6 bg-blue-900/5 order-1 md:order-2 border-b md:border-b-0 md:border-l border-yellow-200">
+                <!-- Konten Beranda -->
+                <div class="relative z-10 flex flex-col items-center max-w-md w-full text-center animate-fade-in-up">
+                    <div class="w-24 h-24 md:w-32 md:h-32 bg-white rounded-2xl shadow-lg p-2 mb-6 flex items-center justify-center">
                         <img src="https://unnes.ac.id/lppm/wp-content/uploads/sites/16/2015/08/Logo-Transparan-Warna-1.png" 
                              alt="Logo UNNES" 
-                             class="w-24 md:w-32 h-auto mb-2 drop-shadow-md"
-                             onerror="this.src='https://placehold.co/150x150/F9E45B/003399?text=UNNES'; this.onerror=null;">
-                        <h4 class="font-bold text-base md:text-lg text-blue-900 mt-1">UNNES</h4>
-                        <p class="text-[10px] font-bold text-blue-800 text-center tracking-widest opacity-70">UNIVERSITAS NEGERI SEMARANG</p>
+                             class="w-full h-auto object-contain"
+                             onerror="this.src='https://placehold.co/200x200/F9E45B/003399?text=UNNES'; this.onerror=null;">
+                    </div>
+                    
+                    <h1 class="text-3xl md:text-4xl font-black text-blue-900 mb-2 tracking-tight">NUMERASIYU</h1>
+                    <div class="h-1 w-16 bg-yellow-400 rounded-full mb-4"></div>
+                    <p class="text-gray-600 text-sm md:text-base font-medium">Media Pembelajaran Interaktif<br>Berbasis Augmented Reality</p>
+                    
+                    <div class="mt-8 grid grid-cols-2 gap-3 w-full px-4">
+                        <div class="bg-white/80 backdrop-blur p-3 rounded-lg border border-blue-100 shadow-sm flex flex-col items-center gap-1">
+                            <i data-lucide="scan" class="w-5 h-5 text-blue-500"></i>
+                            <span class="text-xs font-semibold text-gray-600">QR Scan</span>
+                        </div>
+                        <div class="bg-white/80 backdrop-blur p-3 rounded-lg border border-green-100 shadow-sm flex flex-col items-center gap-1">
+                            <i data-lucide="compass" class="w-5 h-5 text-green-500"></i>
+                            <span class="text-xs font-semibold text-gray-600">Sensor AR</span>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <!-- PAGE 2: MATERI & SCANNER (LAYOUT ADAPTIF) -->
+            <div id="page-materi" class="page w-full h-full hidden flex flex-col p-2 md:p-4 gap-2 md:gap-4">
+                <!-- Header Kecil -->
+                <div class="flex items-center gap-2 px-1 shrink-0">
+                    <div class="p-1.5 bg-green-100 rounded-lg">
+                        <i data-lucide="layers" class="w-5 h-5 text-green-600"></i>
+                    </div>
+                    <h2 class="font-bold text-gray-800">Materi & Aktivitas</h2>
+                </div>
+
+                <!-- 
+                   LOGIKA LAYOUT RESPONSIF:
+                   - Portrait (Default): Flex-col (Atas Bawah)
+                   - Landscape (Layar lebar/HP miring): Flex-row (Kiri Kanan)
+                   - Menggunakan class 'flex-col landscape:flex-row' atau 'md:flex-row'
+                -->
+                <div class="flex-grow flex flex-col md:flex-row landscape:flex-row gap-3 min-h-0 overflow-hidden">
+                    
+                    <!-- KIRI/ATAS: Iframe Materi -->
+                    <div class="flex-1 bg-gray-100 rounded-xl border border-gray-200 overflow-hidden relative shadow-sm group">
+                        <div class="absolute top-2 right-2 bg-black/50 text-white text-[10px] px-2 py-1 rounded-md backdrop-blur z-10">Slide</div>
+                        <iframe src="https://www.canva.com/design/DAG4vcThXDs/0x7N7lcxNemZgrtoXQ5JJg/view?embed" 
+                                class="w-full h-full border-0" 
+                                allow="fullscreen" loading="lazy"></iframe>
+                    </div>
+
+                    <!-- KANAN/BAWAH: Scanner -->
+                    <div class="flex-1 flex flex-col bg-white rounded-xl border border-blue-100 shadow-sm overflow-hidden">
+                        <!-- Header Scanner -->
+                        <div class="p-2 border-b border-gray-100 flex justify-between items-center bg-blue-50/50 shrink-0">
+                            <span class="text-xs font-bold text-blue-800 flex items-center gap-1">
+                                <i data-lucide="scan-line" class="w-3 h-3"></i> Scanner
+                            </span>
+                            <div class="flex gap-1">
+                                <span id="sensor-indicator" class="w-2 h-2 rounded-full bg-gray-300"></span>
+                            </div>
+                        </div>
+
+                        <!-- Area Kamera (Relative agar video bisa absolute fill) -->
+                        <div id="qr-scanner-ui" class="flex-grow relative bg-black w-full min-h-0">
+                            <div id="qr-status-message" class="absolute inset-0 flex items-center justify-center text-white/70 text-xs p-4 text-center">
+                                Menyiapkan kamera...
+                            </div>
+
+                            <!-- Container Video -->
+                            <div id="qr-scanner-container" class="absolute inset-0 hidden">
+                                <video id="qr-video" playsinline muted autoplay></video>
+                                
+                                <!-- Overlay UI -->
+                                <div class="absolute inset-0 pointer-events-none">
+                                    <!-- Sudut Fokus -->
+                                    <div class="absolute top-4 left-4 w-8 h-8 border-t-2 border-l-2 border-white/50 rounded-tl-lg"></div>
+                                    <div class="absolute top-4 right-4 w-8 h-8 border-t-2 border-r-2 border-white/50 rounded-tr-lg"></div>
+                                    <div class="absolute bottom-4 left-4 w-8 h-8 border-b-2 border-l-2 border-white/50 rounded-bl-lg"></div>
+                                    <div class="absolute bottom-4 right-4 w-8 h-8 border-b-2 border-r-2 border-white/50 rounded-br-lg"></div>
+                                    
+                                    <!-- Laser Animasi -->
+                                    <div class="scan-laser"></div>
+                                </div>
+
+                                <!-- HUD Data Sensor (Overlay Pojok) -->
+                                <div class="absolute top-2 left-2 right-2 flex flex-col gap-1 pointer-events-none">
+                                    <div class="flex gap-1">
+                                        <div class="bg-black/60 backdrop-blur text-white text-[9px] font-mono p-1 rounded border border-white/10 flex-1">
+                                            <div class="text-yellow-400 font-bold mb-0.5">COMPASS (ABS)</div>
+                                            <div class="grid grid-cols-3 gap-1">
+                                                <span id="hud-alpha">A:--</span>
+                                                <span id="hud-beta">B:--</span>
+                                                <span id="hud-gamma">G:--</span>
+                                            </div>
+                                        </div>
+                                        <div class="bg-black/60 backdrop-blur text-white text-[9px] font-mono p-1 rounded border border-white/10 flex-1">
+                                            <div class="text-green-400 font-bold mb-0.5">GAME ROTATION</div>
+                                            <div id="hud-game-quaternion" class="truncate">Waiting...</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Hasil Scan Overlay (Muncul saat sukses) -->
+                            <div id="qr-result-container" class="absolute inset-0 bg-white z-20 hidden flex-col">
+                                <div class="flex-1 relative bg-gray-50">
+                                    <div id="qr-iframe-preview" class="absolute inset-0 hidden">
+                                        <iframe id="qr-outputFrame" class="w-full h-full border-0"></iframe>
+                                    </div>
+                                    <div id="qr-data-preview" class="absolute inset-0 p-4 flex items-center justify-center hidden">
+                                        <textarea id="qr-outputData" class="w-full h-32 p-2 text-sm bg-white border rounded resize-none" readonly></textarea>
+                                    </div>
+                                </div>
+                                <div class="p-2 border-t bg-white flex gap-2 shrink-0">
+                                    <button id="qr-copyButton" class="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-xs font-bold hover:bg-gray-200">Salin</button>
+                                    <button id="qr-openLinkButton" class="flex-1 bg-purple-100 text-purple-700 py-2 rounded-lg text-xs font-bold hover:bg-purple-200 hidden">Buka Link</button>
+                                    <button id="qr-scanAgainButton" class="flex-1 bg-blue-600 text-white py-2 rounded-lg text-xs font-bold hover:bg-blue-700">Scan Lagi</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE 3: ASESMEN -->
+            <div id="page-asesmen" class="page w-full h-full hidden flex flex-col p-2 md:p-4 gap-2">
+                <div class="flex items-center gap-2 px-1 shrink-0">
+                    <div class="p-1.5 bg-red-100 rounded-lg">
+                        <i data-lucide="calculator" class="w-5 h-5 text-red-600"></i>
+                    </div>
+                    <h2 class="font-bold text-gray-800">Kuis & Evaluasi</h2>
+                </div>
+                <div class="flex-grow bg-white rounded-xl border border-red-100 shadow-sm overflow-hidden relative">
+                    <iframe src="https://wayground.com/embed/quiz/66dc55162cbae50f1111bf98" 
+                            class="w-full h-full border-0" 
+                            allow="fullscreen"></iframe>
+                </div>
+            </div>
+
+            <!-- PAGE 4: PROFIL (ADAPTIF STACK/SIDE) -->
+            <div id="page-profil" class="page w-full h-full hidden flex flex-col p-4 md:p-8 overflow-y-auto">
+                <div class="max-w-4xl mx-auto w-full bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col md:flex-row">
+                    <!-- Kiri: Foto/Logo -->
+                    <div class="bg-blue-50 p-8 flex items-center justify-center md:w-1/3 border-b md:border-b-0 md:border-r border-blue-100">
+                        <div class="text-center">
+                            <img src="https://unnes.ac.id/lppm/wp-content/uploads/sites/16/2015/08/Logo-Transparan-Warna-1.png" 
+                                 class="w-32 h-auto mx-auto mb-4 drop-shadow-sm hover:scale-110 transition-transform" 
+                                 alt="UNNES"
+                                 onerror="this.src='https://placehold.co/150x150/F9E45B/003399?text=UNNES'; this.onerror=null;">
+                            <h3 class="font-bold text-blue-900 text-lg">UNNES</h3>
+                            <p class="text-[10px] font-bold tracking-widest text-blue-400 uppercase">Universitas Negeri Semarang</p>
+                        </div>
+                    </div>
+                    <!-- Kanan: Info -->
+                    <div class="p-6 md:p-8 md:w-2/3 flex flex-col justify-center space-y-6">
+                        <div>
+                            <p class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Pengembang</p>
+                            <p class="text-xl md:text-2xl font-bold text-gray-800">Yusril Yahya Muhaimin</p>
+                            <p class="text-sm text-blue-600 font-medium">Mahasiswa Pendidikan Dasar</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Dosen Pembimbing</p>
+                            <p class="text-lg font-semibold text-gray-800">Prof. Dr. Sri Wardani, M.Si.</p>
+                        </div>
+                        <div class="pt-4 border-t border-gray-100">
+                            <p class="text-xs text-gray-500">Sekolah Pascasarjana Universitas Negeri Semarang &copy; 2024</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </main>
 
-        <!-- Footer Navigasi (Fixed di bawah) -->
-        <nav class="flex justify-around bg-white border-t p-2 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-50 shrink-0 pb-4 md:pb-2 safe-area-bottom">
-            <button data-page="page-awal" class="nav-button flex flex-col items-center w-1/5 p-1 rounded-lg active:bg-gray-100 transition-colors" title="Beranda">
-                <i data-lucide="home" class="w-5 h-5 md:w-6 md:h-6 text-blue-500"></i>
-                <span class="text-[9px] md:text-xs font-medium text-blue-500 mt-1">Home</span>
-            </button>
-            <button data-page="page-materi" class="nav-button flex flex-col items-center w-1/5 p-1 rounded-lg active:bg-gray-100 transition-colors" title="Materi">
-                <i data-lucide="book-open" class="w-5 h-5 md:w-6 md:h-6 text-green-500"></i>
-                <span class="text-[9px] md:text-xs font-medium text-gray-500 mt-1">Materi</span>
-            </button>
-            <button data-page="page-asesmen" class="nav-button flex flex-col items-center w-1/5 p-1 rounded-lg active:bg-gray-100 transition-colors" title="Asesmen">
-                <i data-lucide="calculator" class="w-5 h-5 md:w-6 md:h-6 text-red-500"></i>
-                <span class="text-[9px] md:text-xs font-medium text-gray-500 mt-1">Kuis</span>
-            </button>
-            <button data-page="page-profil" class="nav-button flex flex-col items-center w-1/5 p-1 rounded-lg active:bg-gray-100 transition-colors" title="Profil">
-                <i data-lucide="user" class="w-5 h-5 md:w-6 md:h-6 text-yellow-500"></i>
-                <span class="text-[9px] md:text-xs font-medium text-gray-500 mt-1">Profil</span>
-            </button>
-            <button id="exit-button" class="flex flex-col items-center w-1/5 p-1 rounded-lg active:bg-red-50 transition-colors" title="Keluar">
-                <i data-lucide="log-out" class="w-5 h-5 md:w-6 md:h-6 text-red-500"></i>
-                <span class="text-[9px] md:text-xs font-medium text-red-500 mt-1">Exit</span>
-            </button>
+        <!-- NAVIGASI BAWAH (FIXED BOTTOM) -->
+        <nav class="shrink-0 bg-white border-t border-gray-200 pb-[env(safe-area-inset-bottom)]">
+            <div class="flex justify-around items-center h-16 px-2">
+                <button data-page="page-awal" class="nav-button group flex-1 flex flex-col items-center justify-center py-1 rounded-xl transition-all hover:bg-gray-50">
+                    <i data-lucide="home" class="w-5 h-5 text-gray-400 group-hover:scale-110 transition-transform"></i>
+                    <span class="text-[10px] font-medium text-gray-400 mt-1">Home</span>
+                </button>
+                <button data-page="page-materi" class="nav-button group flex-1 flex flex-col items-center justify-center py-1 rounded-xl transition-all hover:bg-gray-50">
+                    <i data-lucide="book-open" class="w-5 h-5 text-gray-400 group-hover:scale-110 transition-transform"></i>
+                    <span class="text-[10px] font-medium text-gray-400 mt-1">Materi</span>
+                </button>
+                <div class="relative -top-5">
+                    <button data-page="page-materi" onclick="document.querySelector('[data-page=page-materi]').click()" class="w-14 h-14 bg-blue-600 rounded-full shadow-lg flex items-center justify-center text-white hover:bg-blue-700 active:scale-95 transition-transform border-4 border-gray-50">
+                        <i data-lucide="scan-line" class="w-6 h-6"></i>
+                    </button>
+                </div>
+                <button data-page="page-asesmen" class="nav-button group flex-1 flex flex-col items-center justify-center py-1 rounded-xl transition-all hover:bg-gray-50">
+                    <i data-lucide="calculator" class="w-5 h-5 text-gray-400 group-hover:scale-110 transition-transform"></i>
+                    <span class="text-[10px] font-medium text-gray-400 mt-1">Kuis</span>
+                </button>
+                <button data-page="page-profil" class="nav-button group flex-1 flex flex-col items-center justify-center py-1 rounded-xl transition-all hover:bg-gray-50">
+                    <i data-lucide="user" class="w-5 h-5 text-gray-400 group-hover:scale-110 transition-transform"></i>
+                    <span class="text-[10px] font-medium text-gray-400 mt-1">Profil</span>
+                </button>
+            </div>
         </nav>
     </div>
 
-    <!-- Canvas untuk pemrosesan QR (disembunyikan) -->
-    <canvas id="qr-canvas" style="display: none;"></canvas>
+    <!-- Canvas Hidden -->
+    <canvas id="qr-canvas" class="hidden"></canvas>
 
     <script>
-        // Menginisialisasi ikon Lucide
+        // --- INIT LUCIDE ICONS ---
         lucide.createIcons();
 
-        // --- Global Sensor Data & AR Status ---
-        const sensorData = {
-            location: null,
-            orientation: { alpha: 0, beta: 0, gamma: 0 },
-            absoluteOrientation: null, 
-            gameRotation: null, 
-            arSupported: false
+        // --- STATE GLOBAL ---
+        const state = {
+            sensor: { alpha: 0, beta: 0, gamma: 0, gameQuat: null, isAbsolute: false },
+            qr: { stream: null, animationId: null, active: false }
         };
 
-        // --- Referensi UI QR ---
-        const qrVideo = document.getElementById('qr-video');
-        const qrCanvas = document.getElementById('qr-canvas');
-        const qrCanvasCtx = qrCanvas.getContext('2d');
-        const qrStatusMessage = document.getElementById('qr-status-message');
-        const qrScannerContainer = document.getElementById('qr-scanner-container');
-        const qrResultContainer = document.getElementById('qr-result-container');
-        
-        // Elemen HUD Sensor
-        const hudAlpha = document.getElementById('hud-alpha');
-        const hudBeta = document.getElementById('hud-beta');
-        const hudGamma = document.getElementById('hud-gamma');
-        const hudGameQuat = document.getElementById('hud-game-quaternion');
-        
-        const qrIframePreview = document.getElementById('qr-iframe-preview');
-        const qrOutputFrame = document.getElementById('qr-outputFrame');
-        const qrDataPreview = document.getElementById('qr-data-preview');
-        const qrOutputData = document.getElementById('qr-outputData');
-        
-        const qrCopyButton = document.getElementById('qr-copyButton');
-        const qrScanAgainButton = document.getElementById('qr-scanAgainButton');
-        const qrOpenLinkButton = document.getElementById('qr-openLinkButton');
-
-        let qrStream = null;
-        let qrAnimationLoopId = null;
-
-        function showQrError(message) {
-            qrStatusMessage.textContent = message;
-            qrStatusMessage.style.display = 'block';
-            qrScannerContainer.style.display = 'none';
-        }
-
-        async function startQrScanner() {
-            qrStatusMessage.textContent = "Membuka kamera...";
-            qrStatusMessage.style.display = 'block';
-            qrScannerContainer.style.display = 'none';
-            qrResultContainer.style.display = 'none';
-            qrIframePreview.style.display = 'none';
-            qrDataPreview.style.display = 'none';
-            qrOutputFrame.src = 'about:blank';
-
-            if (qrStream) {
-                qrStream.getTracks().forEach(track => track.stop());
-                qrStream = null;
-            }
-            if (qrAnimationLoopId) {
-                cancelAnimationFrame(qrAnimationLoopId);
-                qrAnimationLoopId = null;
-            }
-
-            try {
-                qrStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "environment" } 
-                });
-
-                qrVideo.srcObject = qrStream;
-                
-                // Tunggu metadata untuk layout yang benar
-                qrVideo.onloadedmetadata = () => {
-                    qrStatusMessage.style.display = 'none';
-                    qrScannerContainer.style.display = 'block';
-                    qrVideo.play();
-                    qrAnimationLoopId = requestAnimationFrame(qrTick);
-                };
-
-            } catch (err) {
-                console.error("QR Error: ", err);
-                let msg = "Gagal akses kamera.";
-                if (err.name === "NotAllowedError") msg = "Izin kamera ditolak.";
-                showQrError(msg);
-            }
-        }
-
-        function stopQrScanner() {
-            if (qrStream) {
-                qrStream.getTracks().forEach(track => track.stop());
-                qrStream = null;
-            }
-            if (qrAnimationLoopId) {
-                cancelAnimationFrame(qrAnimationLoopId);
-                qrAnimationLoopId = null;
-            }
-        }
-
-        function qrTick() {
-            if (qrVideo.readyState === qrVideo.HAVE_ENOUGH_DATA) {
-                qrCanvas.height = qrVideo.videoHeight;
-                qrCanvas.width = qrVideo.videoWidth;
-                qrCanvasCtx.drawImage(qrVideo, 0, 0, qrCanvas.width, qrCanvas.height);
-                const imageData = qrCanvasCtx.getImageData(0, 0, qrCanvas.width, qrCanvas.height);
-                
-                const code = jsQR(imageData.data, imageData.width, imageData.height, {
-                    inversionAttempts: "dontInvert",
-                });
-
-                if (code) {
-                    handleQrCode(code.data);
-                    return;
-                }
-            }
-            if (qrStream && qrStream.active) {
-                qrAnimationLoopId = requestAnimationFrame(qrTick);
-            }
-        }
-
-        function handleQrCode(data) {
-            qrVideo.pause();
-            if (qrAnimationLoopId) {
-                cancelAnimationFrame(qrAnimationLoopId);
-                qrAnimationLoopId = null;
-            }
-
-            qrScannerContainer.style.display = 'none';
-            qrResultContainer.style.display = 'flex'; // Flex untuk responsive layout
-            qrOutputData.value = data;
-
-            const isUrl = data.startsWith('http://') || data.startsWith('https://') || (data.startsWith('www.') && !data.includes(' '));
-
-            if (isUrl) {
-                let finalUrl = data.startsWith('www.') ? `https://${data}` : data;
-                qrOutputFrame.src = finalUrl;
-                qrIframePreview.style.display = 'block';
-                qrDataPreview.style.display = 'none';
-                
-                qrOpenLinkButton.href = finalUrl;
-                qrOpenLinkButton.style.display = 'flex';
-            } else {
-                qrIframePreview.style.display = 'none';
-                qrDataPreview.style.display = 'block';
-                qrOpenLinkButton.style.display = 'none';
-            }
-            lucide.createIcons();
-        }
-
-        qrCopyButton.addEventListener('click', () => {
-            qrOutputData.select();
-            qrOutputData.setSelectionRange(0, 99999); 
-            try {
-                document.execCommand('copy');
-                const originalIcon = qrCopyButton.innerHTML;
-                qrCopyButton.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i>';
-                lucide.createIcons();
-                setTimeout(() => {
-                    qrCopyButton.innerHTML = '<i data-lucide="copy" class="w-4 h-4"></i>';
-                    lucide.createIcons();
-                }, 1000);
-            } catch (err) {}
-        });
-
-        qrScanAgainButton.addEventListener('click', () => {
-            qrResultContainer.style.display = 'none';
-            qrScannerContainer.style.display = 'block';
-            qrVideo.play();
-            qrAnimationLoopId = requestAnimationFrame(qrTick);
-        });
-
-
-        // --- Logika Utama ---
-        document.addEventListener('DOMContentLoaded', () => {
-            const appContainer = document.getElementById('app-container');
-            const sensorOverlay = document.getElementById('sensor-permission-overlay');
-            const grantButton = document.getElementById('grant-permission-button');
-            const permissionStatus = document.getElementById('permission-status');
+        // --- DOM ELEMENTS ---
+        const els = {
+            app: document.getElementById('app-container'),
+            overlay: document.getElementById('sensor-permission-overlay'),
+            grantBtn: document.getElementById('grant-permission-button'),
+            status: document.getElementById('permission-status'),
+            pages: document.querySelectorAll('.page'),
+            navBtns: document.querySelectorAll('.nav-button'),
             
-            const navButtons = document.querySelectorAll('.nav-button');
-            const pages = document.querySelectorAll('.page');
+            // QR UI
+            qrVideo: document.getElementById('qr-video'),
+            qrCanvas: document.getElementById('qr-canvas'),
+            qrCtx: document.getElementById('qr-canvas').getContext('2d'),
+            qrContainer: document.getElementById('qr-scanner-container'),
+            qrUI: document.getElementById('qr-scanner-ui'),
+            qrStatus: document.getElementById('qr-status-message'),
+            qrResult: document.getElementById('qr-result-container'),
+            qrOutput: document.getElementById('qr-outputData'),
+            qrFrame: document.getElementById('qr-outputFrame'),
+            
+            // Buttons
+            copyBtn: document.getElementById('qr-copyButton'),
+            linkBtn: document.getElementById('qr-openLinkButton'),
+            scanAgainBtn: document.getElementById('qr-scanAgainButton'),
+            
+            // HUD
+            hudA: document.getElementById('hud-alpha'),
+            hudB: document.getElementById('hud-beta'),
+            hudG: document.getElementById('hud-gamma'),
+            hudQ: document.getElementById('hud-game-quaternion'),
+            sensorInd: document.getElementById('sensor-indicator')
+        };
 
-            const activeColors = {
-                'page-awal': 'text-blue-500',
-                'page-materi': 'text-green-500',
-                'page-asesmen': 'text-red-500',
-                'page-profil': 'text-yellow-500'
+        // --- FUNGSI UTILITAS ---
+        const setActivePage = (pageId) => {
+            // Hide all
+            els.pages.forEach(p => {
+                p.classList.add('hidden');
+                p.classList.remove('animate-fade-in');
+            });
+            
+            // Show active
+            const active = document.getElementById(pageId);
+            if(active) {
+                active.classList.remove('hidden');
+                active.classList.add('animate-fade-in');
+            }
+
+            // Update Nav Styles
+            els.navBtns.forEach(btn => {
+                const icon = btn.querySelector('svg');
+                const text = btn.querySelector('span');
+                const isActive = btn.dataset.page === pageId;
+                
+                if(icon) icon.classList.toggle('text-blue-600', isActive);
+                if(icon) icon.classList.toggle('text-gray-400', !isActive);
+                
+                if(text) text.classList.toggle('text-blue-600', isActive);
+                if(text) text.classList.toggle('text-gray-400', !isActive);
+                if(text) text.classList.toggle('font-bold', isActive);
+            });
+
+            // Handle QR State
+            if(pageId === 'page-materi') {
+                startQR();
+            } else {
+                stopQR();
+            }
+        };
+
+        // --- LOGIKA SENSOR ---
+        const initSensors = async () => {
+            els.status.textContent = "Menghubungkan ke sensor perangkat...";
+            
+            // 1. Device Orientation (Basic)
+            if (typeof DeviceOrientationEvent?.requestPermission === 'function') {
+                try { await DeviceOrientationEvent.requestPermission(); } catch(e){}
+            }
+            
+            const handleOrientation = (e) => {
+                // Deteksi apakah data absolute (kompas) atau relative
+                const heading = e.webkitCompassHeading || e.alpha;
+                const isAbs = e.absolute || (e.webkitCompassHeading !== undefined);
+                
+                state.sensor.alpha = heading;
+                state.sensor.beta = e.beta;
+                state.sensor.gamma = e.gamma;
+                state.sensor.isAbsolute = isAbs;
+                
+                updateHUD();
             };
 
-            function showApp() {
-                sensorOverlay.style.display = 'none';
-                appContainer.style.display = 'flex';
-                lucide.createIcons();
-                // Re-check size untuk iframe/canvas saat rotasi
-                window.dispatchEvent(new Event('resize'));
-                setActivePage('page-awal');
+            if ('ondeviceorientationabsolute' in window) {
+                window.addEventListener('deviceorientationabsolute', (e) => handleOrientation({...e, absolute: true}));
+            } else {
+                window.addEventListener('deviceorientation', handleOrientation);
             }
 
-            // --- Helper Update HUD ---
-            function updateSensorHUD(alpha, beta, gamma, isAbsolute) {
-                if (qrScannerContainer.style.display !== 'none') {
-                    // Singkatkan tampilan agar muat di layar kecil
-                    hudAlpha.innerHTML = `A:${alpha ? alpha.toFixed(0) : '-'}°`;
-                    hudBeta.innerHTML  = `B:${beta ? beta.toFixed(0) : '-'}°`;
-                    hudGamma.innerHTML = `G:${gamma ? gamma.toFixed(0) : '-'}°`;
-                }
+            // 2. Absolute Orientation Sensor (API Modern)
+            if ('AbsoluteOrientationSensor' in window) {
+                try {
+                    const absSensor = new AbsoluteOrientationSensor({ frequency: 60, referenceFrame: 'device' });
+                    absSensor.addEventListener('reading', () => {
+                        // Update HUD jika presisi tinggi
+                    });
+                    absSensor.start();
+                } catch(e){ if(e.name!=='SecurityError') console.warn(e); }
             }
+
+            // 3. Relative / Game Rotation
+            if ('RelativeOrientationSensor' in window) {
+                try {
+                    const gameSensor = new RelativeOrientationSensor({ frequency: 60, referenceFrame: 'device' });
+                    gameSensor.addEventListener('reading', () => {
+                        state.sensor.gameQuat = gameSensor.quaternion;
+                        updateHUD();
+                    });
+                    gameSensor.addEventListener('error', (e) => {
+                        els.hudQ.textContent = e.error.name === 'SecurityError' ? 'Blocked' : 'N/A';
+                    });
+                    gameSensor.start();
+                } catch(e){}
+            }
+
+            els.status.textContent = "Sensor Aktif.";
+        };
+
+        const updateHUD = () => {
+            // Update DOM minimal untuk performa
+            if(els.qrContainer.offsetParent === null) return; // Skip jika hidden
+
+            const { alpha, beta, gamma, gameQuat, isAbsolute } = state.sensor;
             
-            function updateGameRotationHUD(quaternion) {
-                if (qrScannerContainer.style.display !== 'none' && quaternion) {
-                    const [x, y, z, w] = quaternion;
-                    hudGameQuat.innerHTML = `X:${x.toFixed(2)} Y:${y.toFixed(2)} Z:${z.toFixed(2)}`;
-                    hudGameQuat.classList.add('text-green-300');
-                }
+            els.hudA.textContent = `A:${alpha?.toFixed(0) || '-'}`;
+            els.hudB.textContent = `B:${beta?.toFixed(0) || '-'}`;
+            els.hudG.textContent = `G:${gamma?.toFixed(0) || '-'}`;
+            
+            if(gameQuat) {
+                const [x,y,z,w] = gameQuat;
+                els.hudQ.textContent = `x${x.toFixed(1)} y${y.toFixed(1)} z${z.toFixed(1)}`;
             }
 
-            // --- Izin Sensor ---
-            grantButton.addEventListener('click', async () => {
-                permissionStatus.textContent = "Menyiapkan...";
+            els.sensorInd?.classList.toggle('bg-green-500', true);
+        };
+
+        // --- LOGIKA QR SCANNER (Auto-Responsive Video) ---
+        const startQR = async () => {
+            if(state.qr.active) return;
+            
+            try {
+                els.qrStatus.textContent = "Membuka kamera...";
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' } 
+                });
                 
-                // 1. Request DeviceOrientation
-                if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    try { await DeviceOrientationEvent.requestPermission(); } catch (e) {}
-                }
-
-                // 2. Absolute Orientation (Magnetometer)
-                if ('AbsoluteOrientationSensor' in window) {
-                    try {
-                        const sensor = new AbsoluteOrientationSensor({ frequency: 60, referenceFrame: 'device' });
-                        sensor.addEventListener('reading', () => { sensorData.absoluteOrientation = sensor.quaternion; });
-                        sensor.start();
-                    } catch (e) { 
-                        if(e.name !== 'SecurityError') console.warn("Absolute sensor error:", e); 
-                    }
-                }
-
-                // 3. Relative Orientation (Game Rotation)
-                if ('RelativeOrientationSensor' in window) {
-                    try {
-                        const gameSensor = new RelativeOrientationSensor({ frequency: 60, referenceFrame: 'device' });
-                        gameSensor.addEventListener('reading', () => {
-                            sensorData.gameRotation = gameSensor.quaternion;
-                            updateGameRotationHUD(gameSensor.quaternion);
-                        });
-                        gameSensor.addEventListener('error', (ev) => {
-                           hudGameQuat.textContent = (ev.error.name === 'SecurityError') ? "Blocked" : "Error";
-                        });
-                        gameSensor.start();
-                    } catch (e) {}
-                }
-
-                // 4. Fallback Orientation Event
-                const orientationHandler = (event) => {
-                    let heading = event.webkitCompassHeading || event.alpha; 
-                    let isAbsolute = event.absolute || (event.webkitCompassHeading !== undefined);
-                    updateSensorHUD(heading, event.beta, event.gamma, isAbsolute);
+                state.qr.stream = stream;
+                els.qrVideo.srcObject = stream;
+                els.qrVideo.setAttribute("playsinline", true); // iOS fix
+                
+                // Tunggu metadata untuk memastikan ukuran
+                els.qrVideo.onloadedmetadata = () => {
+                    els.qrStatus.style.display = 'none';
+                    els.qrContainer.classList.remove('hidden');
+                    els.qrVideo.play();
+                    state.qr.active = true;
+                    state.qr.animationId = requestAnimationFrame(scanTick);
                 };
 
-                if ('ondeviceorientationabsolute' in window) {
-                    window.addEventListener('deviceorientationabsolute', (e) => {
-                         updateSensorHUD(e.alpha, e.beta, e.gamma, true);
-                    });
-                } else {
-                    window.addEventListener('deviceorientation', orientationHandler);
-                }
-
-                // 5. Pemanasan Kamera
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                    stream.getTracks().forEach(track => track.stop());
-                } catch (e) {}
-
-                setTimeout(showApp, 500);
-            });
-
-            // --- Navigasi ---
-            function setActivePage(pageId) {
-                pages.forEach(page => page.classList.add('hidden'));
-                const activePage = document.getElementById(pageId);
-                if (activePage) activePage.classList.remove('hidden');
-                
-                navButtons.forEach(button => {
-                    const span = button.querySelector('span');
-                    const icon = button.querySelector('svg'); // Lucide mereplace i dengan svg
-                    const buttonPageId = button.dataset.page;
-                    
-                    span.classList.remove(...Object.values(activeColors));
-                    span.classList.add('text-gray-500');
-                    
-                    if(icon) {
-                        icon.classList.remove('text-blue-500', 'text-green-500', 'text-red-500', 'text-yellow-500');
-                        icon.classList.add('text-gray-400'); // Default non-aktif
-                    }
-
-                    if (buttonPageId === pageId) {
-                        span.classList.remove('text-gray-500');
-                        span.classList.add(activeColors[pageId]);
-                        
-                        if(icon) {
-                            icon.classList.remove('text-gray-400');
-                            // Extract warna dari class text-*-500 di activeColors
-                            const colorClass = activeColors[pageId];
-                            icon.classList.add(colorClass);
-                        }
-                    }
-                });
-
-                if (pageId === 'page-materi') {
-                    startQrScanner();
-                } else {
-                    stopQrScanner();
-                }
-                if(activePage) activePage.scrollTop = 0;
-                lucide.createIcons();
+            } catch(e) {
+                console.error(e);
+                els.qrStatus.textContent = "Gagal akses kamera: " + e.name;
             }
+        };
 
-            navButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    setActivePage(button.dataset.page);
-                });
-            });
+        const stopQR = () => {
+            if(!state.qr.active) return;
             
-            const exitButton = document.getElementById('exit-button');
-            if (exitButton) {
-                exitButton.addEventListener('click', () => {
-                     if(confirm("Keluar aplikasi?")) window.close();
-                });
+            if(state.qr.stream) {
+                state.qr.stream.getTracks().forEach(t => t.stop());
+                state.qr.stream = null;
             }
+            if(state.qr.animationId) {
+                cancelAnimationFrame(state.qr.animationId);
+            }
+            
+            els.qrVideo.pause();
+            els.qrVideo.srcObject = null;
+            els.qrContainer.classList.add('hidden');
+            els.qrStatus.style.display = 'flex';
+            els.qrStatus.textContent = "Kamera Nonaktif";
+            state.qr.active = false;
+        };
 
-            // Deteksi Resize untuk menyesuaikan UI jika user memutar HP setelah load
-            window.addEventListener('resize', () => {
-                // Jika scanner aktif, pastikan video menyesuaikan
-                if(!document.getElementById('page-materi').classList.contains('hidden')) {
-                    // logik CSS object-fit: cover sudah menghandle, tapi kita trigger layout recalc
+        const scanTick = () => {
+            if (els.qrVideo.readyState === els.qrVideo.HAVE_ENOUGH_DATA) {
+                // Sync Canvas size dengan Video (Internal)
+                els.qrCanvas.height = els.qrVideo.videoHeight;
+                els.qrCanvas.width = els.qrVideo.videoWidth;
+                
+                // Draw frame untuk analisis jsQR
+                els.qrCtx.drawImage(els.qrVideo, 0, 0, els.qrCanvas.width, els.qrCanvas.height);
+                
+                const imageData = els.qrCtx.getImageData(0, 0, els.qrCanvas.width, els.qrCanvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
+
+                if (code) {
+                    handleScanResult(code.data);
+                    return; // Stop scanning loop sementara
                 }
+            }
+            if(state.qr.active) requestAnimationFrame(scanTick);
+        };
+
+        const handleScanResult = (data) => {
+            // Stop sementara
+            // els.qrVideo.pause(); // Optional: pause video or keep running under overlay
+            
+            els.qrResult.classList.remove('hidden');
+            els.qrResult.classList.add('flex');
+            els.qrOutput.value = data;
+
+            const isUrl = /^(http|https):\/\/[^ "]+$/.test(data);
+            
+            if(isUrl) {
+                els.qrFrame.src = data;
+                document.getElementById('qr-iframe-preview').classList.remove('hidden');
+                document.getElementById('qr-data-preview').classList.add('hidden');
+                els.linkBtn.classList.remove('hidden');
+                els.linkBtn.onclick = () => window.open(data, '_blank');
+            } else {
+                document.getElementById('qr-iframe-preview').classList.add('hidden');
+                document.getElementById('qr-data-preview').classList.remove('hidden');
+                els.linkBtn.classList.add('hidden');
+            }
+        };
+
+        // --- EVENT LISTENERS ---
+        
+        // 1. Permission Grant
+        els.grantBtn.addEventListener('click', async () => {
+            els.grantBtn.disabled = true;
+            els.grantBtn.textContent = "Menyiapkan...";
+            
+            await initSensors();
+            
+            // Pemanasan Kamera
+            try {
+                const s = await navigator.mediaDevices.getUserMedia({ video: {facingMode: 'environment'} });
+                s.getTracks().forEach(t => t.stop());
+            } catch(e){}
+
+            // Animasi Transisi
+            els.overlay.classList.add('opacity-0');
+            setTimeout(() => {
+                els.overlay.style.display = 'none';
+                els.app.classList.remove('hidden');
+                setActivePage('page-awal');
+            }, 500);
+        });
+
+        // 2. Navigasi
+        els.navBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // Prevent default jika tombol ada di dalam form (aman di sini)
+                const page = btn.dataset.page;
+                if(page) setActivePage(page);
             });
         });
+
+        // 3. QR Actions
+        els.scanAgainBtn.addEventListener('click', () => {
+            els.qrResult.classList.add('hidden');
+            els.qrResult.classList.remove('flex');
+            els.qrFrame.src = 'about:blank';
+            els.qrVideo.play();
+            scanTick();
+        });
+
+        els.copyBtn.addEventListener('click', () => {
+            els.qrOutput.select();
+            document.execCommand('copy');
+            const originalText = els.copyBtn.textContent;
+            els.copyBtn.textContent = "Tersalin!";
+            setTimeout(() => els.copyBtn.textContent = originalText, 1500);
+        });
+
+        // 4. Window Resize Handler (PENTING UNTUK ROTASI)
+        window.addEventListener('resize', () => {
+            // Reset tinggi vh untuk mobile browser (address bar)
+            let vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+            
+            // Jika orientasi berubah, layout flexbox (landscape:flex-row) akan otomatis handle CSS
+            // Kita hanya perlu memastikan video scaling benar (object-fit: cover di CSS sudah handle)
+        });
+
+        // Init
+        let vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+
     </script>
 </body>
 </html>
