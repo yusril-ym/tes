@@ -547,7 +547,6 @@
             const grantButton = document.getElementById('grant-permission-button');
             const permissionStatus = document.getElementById('permission-status');
             
-            // Tambahkan definisi variabel ini yang sebelumnya hilang
             const navButtons = document.querySelectorAll('.nav-button');
             const pages = document.querySelectorAll('.page');
 
@@ -607,12 +606,6 @@
                             const q = sensor.quaternion;
                             // Simpan data mentah
                             sensorData.absoluteOrientation = q;
-                            
-                            // Catatan: Konversi quaternion ke Euler (Alpha/Beta/Gamma) cukup kompleks 
-                            // di sini kita gunakan mapping sederhana atau logik raw jika diperlukan.
-                            // Untuk demo ini, kita akan menggunakan fallback event listener 
-                            // untuk update UI agar lebih konsisten dengan nilai derajat, 
-                            // tapi sensor ini aktif di background untuk presisi tinggi AR.
                         });
                         
                         sensor.addEventListener('error', (error) => {
@@ -625,7 +618,12 @@
                         console.log("AbsoluteOrientationSensor (Generic API) AKTIF");
                         
                     } catch (error) {
-                        console.error("Gagal menginisialisasi AbsoluteOrientationSensor:", error);
+                        // ERROR HANDLING KHUSUS UNTUK PERMISSIONS POLICY
+                        if (error.name === 'SecurityError') {
+                            console.warn("AbsoluteOrientationSensor diblokir oleh Permissions Policy. Menggunakan fallback.");
+                        } else {
+                            console.error("Gagal menginisialisasi AbsoluteOrientationSensor:", error);
+                        }
                     }
                 }
 
