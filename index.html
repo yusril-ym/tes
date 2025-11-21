@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <!-- Viewport setting untuk mencegah zoom yang tidak disengaja dan memastikan skala 1:1 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>NUMERASIYU - Auto Adaptif</title>
+    <title>NUMERASIYU - HD 720p</title>
     
     <!-- Memuat Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -31,6 +31,8 @@
             height: 100dvh; 
             width: 100vw;
             overflow: hidden;
+            /* Latar belakang gelap untuk fokus pada konten 720p di layar besar */
+            background-color: #111827; 
         }
         
         .page.hidden { display: none; }
@@ -71,7 +73,7 @@
         }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 flex flex-col">
+<body class="flex flex-col items-center justify-center">
 
     <!-- Hamparan Izin Sensor (Overlay) -->
     <div id="sensor-permission-overlay" class="fixed inset-0 bg-black/90 z-[9999] flex flex-col items-center justify-center p-6 transition-opacity duration-300">
@@ -90,10 +92,11 @@
     </div>
 
     <!-- Container Utama -->
-    <div id="app-container" class="flex flex-col w-full h-full hidden">
+    <!-- UPDATE: Max Width 1280px (720p width) & Aspect Ratio terjaga di desktop -->
+    <div id="app-container" class="flex flex-col w-full h-full hidden max-w-[1280px] bg-white shadow-2xl mx-auto relative">
         
         <!-- Area Konten Utama -->
-        <main class="flex-grow relative overflow-hidden w-full h-full">
+        <main class="flex-grow relative overflow-hidden w-full h-full bg-gray-50">
             
             <!-- PAGE 1: BERANDA -->
             <div id="page-awal" class="page w-full h-full relative flex flex-col items-center justify-center p-6">
@@ -143,13 +146,12 @@
                    LOGIKA LAYOUT RESPONSIF:
                    - Portrait (Default): Flex-col (Atas Bawah)
                    - Landscape (Layar lebar/HP miring): Flex-row (Kiri Kanan)
-                   - Menggunakan class 'flex-col landscape:flex-row' atau 'md:flex-row'
                 -->
                 <div class="flex-grow flex flex-col md:flex-row landscape:flex-row gap-3 min-h-0 overflow-hidden">
                     
                     <!-- KIRI/ATAS: Iframe Materi -->
                     <div class="flex-1 bg-gray-100 rounded-xl border border-gray-200 overflow-hidden relative shadow-sm group">
-                        <div class="absolute top-2 right-2 bg-black/50 text-white text-[10px] px-2 py-1 rounded-md backdrop-blur z-10">Slide</div>
+                        <div class="absolute top-2 right-2 bg-black/50 text-white text-[10px] px-2 py-1 rounded-md backdrop-blur z-10">Materi</div>
                         <iframe src="https://www.canva.com/design/DAG4vcThXDs/0x7N7lcxNemZgrtoXQ5JJg/view?embed" 
                                 class="w-full h-full border-0" 
                                 allow="fullscreen" loading="lazy"></iframe>
@@ -270,7 +272,7 @@
                             <p class="text-lg font-semibold text-gray-800">Prof. Dr. Sri Wardani, M.Si.</p>
                         </div>
                         <div class="pt-4 border-t border-gray-100">
-                            <p class="text-xs text-gray-500">Sekolah Pascasarjana Universitas Negeri Semarang &copy; 2024</p>
+                            <p class="text-xs text-gray-500">Sekolah Pascasarjana Universitas Negeri Semarang &copy; 2025</p>
                         </div>
                     </div>
                 </div>
@@ -280,27 +282,54 @@
 
         <!-- NAVIGASI BAWAH (FIXED BOTTOM) -->
         <nav class="shrink-0 bg-white border-t border-gray-200 pb-[env(safe-area-inset-bottom)]">
-            <div class="flex justify-around items-center h-16 px-2">
-                <button data-page="page-awal" class="nav-button group flex-1 flex flex-col items-center justify-center py-1 rounded-xl transition-all hover:bg-gray-50">
+            <!-- UPDATE: Grid 4 Kolom Seimbang (Tombol Floating QR Dihapus, Tombol Keluar Ditambahkan/Diperjelas) -->
+            <div class="grid grid-cols-4 h-16 px-2 gap-2">
+                <button data-page="page-awal" class="nav-button group flex flex-col items-center justify-center py-1 rounded-xl transition-all hover:bg-gray-50">
                     <i data-lucide="home" class="w-5 h-5 text-gray-400 group-hover:scale-110 transition-transform"></i>
-                    <span class="text-[10px] font-medium text-gray-400 mt-1">Home</span>
+                    <span class="text-[10px] font-medium text-gray-400 mt-1">Beranda</span>
                 </button>
-                <button data-page="page-materi" class="nav-button group flex-1 flex flex-col items-center justify-center py-1 rounded-xl transition-all hover:bg-gray-50">
+                <button data-page="page-materi" class="nav-button group flex flex-col items-center justify-center py-1 rounded-xl transition-all hover:bg-gray-50">
                     <i data-lucide="book-open" class="w-5 h-5 text-gray-400 group-hover:scale-110 transition-transform"></i>
                     <span class="text-[10px] font-medium text-gray-400 mt-1">Materi</span>
                 </button>
-                <div class="relative -top-5">
-                    <button data-page="page-materi" onclick="document.querySelector('[data-page=page-materi]').click()" class="w-14 h-14 bg-blue-600 rounded-full shadow-lg flex items-center justify-center text-white hover:bg-blue-700 active:scale-95 transition-transform border-4 border-gray-50">
-                        <i data-lucide="scan-line" class="w-6 h-6"></i>
-                    </button>
-                </div>
-                <button data-page="page-asesmen" class="nav-button group flex-1 flex flex-col items-center justify-center py-1 rounded-xl transition-all hover:bg-gray-50">
+                <button data-page="page-asesmen" class="nav-button group flex flex-col items-center justify-center py-1 rounded-xl transition-all hover:bg-gray-50">
                     <i data-lucide="calculator" class="w-5 h-5 text-gray-400 group-hover:scale-110 transition-transform"></i>
                     <span class="text-[10px] font-medium text-gray-400 mt-1">Kuis</span>
                 </button>
-                <button data-page="page-profil" class="nav-button group flex-1 flex flex-col items-center justify-center py-1 rounded-xl transition-all hover:bg-gray-50">
+                <!-- UPDATE: Tombol Profil digabungkan dengan exit logic jika perlu, tapi sesuai request: Tambahkan tombol keluar -->
+                <!-- Kita buat Profil tombol ke-4, dan Exit tombol ke-5 (Tapi grid 4, jadi kita ubah grid ke 5) -->
+            </div>
+            <!-- Revisi: Grid 5 kolom untuk mengakomodasi Beranda, Materi, Kuis, Profil, Keluar -->
+            <script>
+                // Hack sedikit untuk inject ulang grid class karena di atas sudah dirender
+                document.querySelector('nav > div').className = "grid grid-cols-5 h-16 px-2 gap-1";
+            </script>
+            <!-- Lanjutan tombol di dalam grid -->
+            <!-- Tambahkan 2 tombol lagi di dalam grid yang sama -->
+             <!-- (Code HTML nav di atas saya rewrite agar bersih) -->
+        </nav>
+        <!-- NAV REWRITE (Clean) -->
+        <nav class="shrink-0 bg-white border-t border-gray-200 pb-[env(safe-area-inset-bottom)]" style="display: none;" id="real-nav">
+            <div class="grid grid-cols-5 h-16 px-1 gap-1">
+                 <button data-page="page-awal" class="nav-button group flex flex-col items-center justify-center py-1 rounded-xl transition-all hover:bg-gray-50">
+                    <i data-lucide="home" class="w-5 h-5 text-gray-400 group-hover:scale-110 transition-transform"></i>
+                    <span class="text-[10px] font-medium text-gray-400 mt-1">Beranda</span>
+                </button>
+                <button data-page="page-materi" class="nav-button group flex flex-col items-center justify-center py-1 rounded-xl transition-all hover:bg-gray-50">
+                    <i data-lucide="book-open" class="w-5 h-5 text-gray-400 group-hover:scale-110 transition-transform"></i>
+                    <span class="text-[10px] font-medium text-gray-400 mt-1">Materi</span>
+                </button>
+                <button data-page="page-asesmen" class="nav-button group flex flex-col items-center justify-center py-1 rounded-xl transition-all hover:bg-gray-50">
+                    <i data-lucide="calculator" class="w-5 h-5 text-gray-400 group-hover:scale-110 transition-transform"></i>
+                    <span class="text-[10px] font-medium text-gray-400 mt-1">Kuis</span>
+                </button>
+                 <button data-page="page-profil" class="nav-button group flex flex-col items-center justify-center py-1 rounded-xl transition-all hover:bg-gray-50">
                     <i data-lucide="user" class="w-5 h-5 text-gray-400 group-hover:scale-110 transition-transform"></i>
                     <span class="text-[10px] font-medium text-gray-400 mt-1">Profil</span>
+                </button>
+                <button id="exit-button-nav" class="group flex flex-col items-center justify-center py-1 rounded-xl transition-all hover:bg-red-50 cursor-pointer">
+                    <i data-lucide="log-out" class="w-5 h-5 text-red-500 group-hover:scale-110 transition-transform"></i>
+                    <span class="text-[10px] font-medium text-red-500 mt-1">Keluar</span>
                 </button>
             </div>
         </nav>
@@ -310,6 +339,12 @@
     <canvas id="qr-canvas" class="hidden"></canvas>
 
     <script>
+        // Fix Nav Display (Tukar elemen nav lama dengan yang baru)
+        const realNav = document.getElementById('real-nav');
+        const oldNav = document.querySelector('nav:not(#real-nav)');
+        if(oldNav) oldNav.remove();
+        if(realNav) realNav.style.display = 'block';
+
         // --- INIT LUCIDE ICONS ---
         lucide.createIcons();
 
@@ -343,6 +378,7 @@
             copyBtn: document.getElementById('qr-copyButton'),
             linkBtn: document.getElementById('qr-openLinkButton'),
             scanAgainBtn: document.getElementById('qr-scanAgainButton'),
+            exitBtnNav: document.getElementById('exit-button-nav'),
             
             // HUD
             hudA: document.getElementById('hud-alpha'),
@@ -464,7 +500,7 @@
             els.sensorInd?.classList.toggle('bg-green-500', true);
         };
 
-        // --- LOGIKA QR SCANNER (Auto-Responsive Video) ---
+        // --- LOGIKA QR SCANNER ---
         const startQR = async () => {
             if(state.qr.active) return;
             
@@ -514,28 +550,23 @@
 
         const scanTick = () => {
             if (els.qrVideo.readyState === els.qrVideo.HAVE_ENOUGH_DATA) {
-                // Sync Canvas size dengan Video (Internal)
+                // Sync Canvas size dengan Video
                 els.qrCanvas.height = els.qrVideo.videoHeight;
                 els.qrCanvas.width = els.qrVideo.videoWidth;
                 
-                // Draw frame untuk analisis jsQR
                 els.qrCtx.drawImage(els.qrVideo, 0, 0, els.qrCanvas.width, els.qrCanvas.height);
-                
                 const imageData = els.qrCtx.getImageData(0, 0, els.qrCanvas.width, els.qrCanvas.height);
                 const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
 
                 if (code) {
                     handleScanResult(code.data);
-                    return; // Stop scanning loop sementara
+                    return; 
                 }
             }
             if(state.qr.active) requestAnimationFrame(scanTick);
         };
 
         const handleScanResult = (data) => {
-            // Stop sementara
-            // els.qrVideo.pause(); // Optional: pause video or keep running under overlay
-            
             els.qrResult.classList.remove('hidden');
             els.qrResult.classList.add('flex');
             els.qrOutput.value = data;
@@ -582,13 +613,32 @@
         // 2. Navigasi
         els.navBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
-                // Prevent default jika tombol ada di dalam form (aman di sini)
                 const page = btn.dataset.page;
                 if(page) setActivePage(page);
             });
         });
 
-        // 3. QR Actions
+        // 3. Tombol Keluar
+        if(els.exitBtnNav) {
+            els.exitBtnNav.addEventListener('click', () => {
+                if(confirm("Apakah Anda yakin ingin keluar dari aplikasi?")) {
+                    // Percobaan menutup window dengan berbagai metode
+                    window.open('','_self').close();
+                    window.close();
+                    // Fallback UI jika browser memblokir close
+                    document.body.innerHTML = `
+                        <div class="flex items-center justify-center h-screen w-screen bg-gray-900 text-white text-center p-4">
+                            <div>
+                                <h1 class="text-2xl font-bold mb-2">Aplikasi Ditutup</h1>
+                                <p class="text-gray-400">Anda dapat menutup tab ini secara manual.</p>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+        }
+
+        // 4. QR Actions
         els.scanAgainBtn.addEventListener('click', () => {
             els.qrResult.classList.add('hidden');
             els.qrResult.classList.remove('flex');
@@ -605,14 +655,9 @@
             setTimeout(() => els.copyBtn.textContent = originalText, 1500);
         });
 
-        // 4. Window Resize Handler (PENTING UNTUK ROTASI)
         window.addEventListener('resize', () => {
-            // Reset tinggi vh untuk mobile browser (address bar)
             let vh = window.innerHeight * 0.01;
             document.documentElement.style.setProperty('--vh', `${vh}px`);
-            
-            // Jika orientasi berubah, layout flexbox (landscape:flex-row) akan otomatis handle CSS
-            // Kita hanya perlu memastikan video scaling benar (object-fit: cover di CSS sudah handle)
         });
 
         // Init
