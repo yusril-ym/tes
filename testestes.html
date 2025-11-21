@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NUMERASIYU - Sensor & AR Ready</title>
+    
+    <!-- Memuat Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Memuat Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+    <!-- Memuat pustaka jsQR untuk decoding QR -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    
+    <style>
+        /* Menggunakan font Inter */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        /* Menyembunyikan halaman yang tidak aktif */
+        .page.hidden {
+            display: none;
+        }
+        
+        /* Hamparan untuk meminta rotasi */
+        #rotate-overlay {
+            display: none; /* Disembunyikan secara default */
+            position: fixed;
+            inset: 0;
+            background-color: #f3f4f6; /* bg-gray-100 */
+            z-index: 9999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 1rem;
+        }
+
+        /* Hamparan Izin Sensor (BARU) */
+        #sensor-permission-overlay {
+            display: none; /* Disembunyikan secara default */
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.85); /* Latar belakang lebih gelap */
+            z-index: 9998; /* Di bawah rotate, tapi di atas app */
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 1rem;
+        }
+        
+        /* Saat dalam mode portrait */
+        @media (orientation: portrait) {
+            #app-container, #sensor-permission-overlay {
+                display: none; /* Sembunyikan aplikasi & izin */
+            }
+            #rotate-overlay {
+                display: flex; /* Tampilkan hamparan rotasi */
+            }
+        }
+
+        /* Saat dalam mode landscape */
+        @media (orientation: landscape) {
+            /* Logika untuk menampilkan izin ATAU aplikasi akan ditangani oleh JS */
+            #rotate-overlay {
+                display: none; /* Sembunyikan hamparan rotasi */
+            }
+        }
+
+        /* Style khusus untuk pemindai QR */
+        #qr-video, #qr-canvas {
+            display: none;
+        }
+        #qr-scanner-container {
+            overflow: hidden;
+            background-color: #333;
+        }
+        #qr-video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <!-- Hamparan Peringatan Rotasi -->
+    <div id="rotate-overlay">
+        <i data-lucide="rotate-cw" class="w-16 h-16 text-gray-700 mb-4 animate-spin" style="animation-duration: 3s;"></i>
+        <h2 class="text-xl font-semibold text-gray-800">Harap Putar Perangkat Anda</h2>
+        <p class="text-gray-600 mt-2">Aplikasi ini dirancang untuk tampilan landscape.</p>
+    </div>
+
+    <!-- Hamparan Izin Sensor -->
+    <div id="sensor-permission-overlay">
+        <div class="bg-white p-6 md:p-8 rounded-xl shadow-2xl max-w-lg w-full transform transition-all">
+            <div class="flex justify-center mb-4">
+                <div class="bg-blue-100 p-4 rounded-full">
+                    <i data-lucide="scan-face" class="w-12 h-12 text-blue-600"></i>
+                </div>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800 text-center mb-3">Izin & Fitur AR</h2>
+            <p class="text-gray-600 text-center mb-4 text-sm">
+                Aplikasi Numerasiyu memerlukan akses ke fitur Augmented Reality (AR) dan sensor perangkat Android Anda:
+            </p>
+            
+            <div class="space-y-3 mb-6 text-left bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <div class="flex items-center">
+                    <i data-lucide="camera" class="w-5 h-5 text-blue-500 mr-3"></i>
+                    <span class="text-sm text-gray-700"><strong>Kamera AR:</strong> Membuka akses kamera lingkungan.</span>
+                </div>
+                <div class="flex items-center">
+                    <i data-lucide="smartphone" class="w-5 h-5 text-purple-500 mr-3"></i>
+                    <span class="text-sm text-gray-700"><strong>Sensor AR (Android):</strong> Mengaktifkan dukungan WebXR/ARCore.</span>
+                </div>
+                <div class="flex items-center">
+                    <i data-lucide="map-pin" class="w-5 h-5 text-red-500 mr-3"></i>
+                    <span class="text-sm text-gray-700"><strong>Lokasi:</strong> Menentukan lokasi pembelajaran.</span>
+                </div>
+            </div>
+
+            <button id="grant-permission-button" class="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition duration-300 flex items-center justify-center gap-2">
+                <span>Izinkan & Aktifkan AR</span>
+                <i data-lucide="arrow-right" class="w-5 h-5"></i>
+            </button>
+            <p id="permission-status" class="text-xs text-gray-400 mt-3 text-center italic h-4"></p>
+        </div>
+    </div>
+
+    <!-- Container Utama Aplikasi (Awalnya disembunyikan) -->
+    <div id="app-container" class="bg-white flex-col w-screen h-screen" style="display: none;">
+
+        <!-- Konten Utama (Halaman yang bisa diganti) -->
+        <main class="flex-grow p-4 overflow-auto">
+
+            <!-- Halaman Awal (Page 1) -->
+            <div id="page-awal" class="page h-full" 
+                 style="background-image: url('https://cdn.pixabay.com/photo/2021/05/05/11/43/modern-6230891_1280.png'); background-size: cover; background-position: center; background-repeat: no-repeat;">
+                
+                <div class="flex flex-col items-center justify-center text-center h-full relative z-10 bg-white bg-opacity-80 p-6 rounded-xl backdrop-blur-sm border border-white/50 shadow-xl">
+                    <img src="https://unnes.ac.id/lppm/wp-content/uploads/sites/16/2015/08/Logo-Transparan-Warna-1.png" 
+                         alt="Logo UNNES" 
+                         class="w-40 h-auto mb-6 hover:scale-105 transition-transform duration-300"
+                         onerror="this.src='https://placehold.co/200x200/F9E45B/003399?text=UNNES'; this.onerror=null;">
+                    
+                    <div class="bg-white px-8 py-4 rounded-xl shadow-md border-l-4 border-blue-500 mb-6">
+                        <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-yellow-500">NUMERASIYU</h1>
+                    </div>
+                    
+                    <p class="text-gray-800 font-semibold text-lg">Media Pembelajaran Interaktif</p>
+                    <p class="text-gray-600 text-sm mt-2">Silakan pilih menu di bawah untuk memulai.</p>
+                    
+                    <!-- Indikator Status Sensor -->
+                    <div class="mt-6 flex gap-3 text-xs text-gray-500 bg-white/80 py-2 px-4 rounded-full shadow-sm border border-gray-200">
+                        <span class="flex items-center gap-1"><div class="w-2 h-2 rounded-full bg-green-500"></div> Sensor & AR Ready</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Halaman Materi (Page 2) -->
+            <div id="page-materi" class="page hidden flex flex-col h-full">
+                <h2 class="text-xl font-semibold mb-4 text-green-600 flex items-center gap-2">
+                    <i data-lucide="book-open" class="w-6 h-6"></i> Halaman Materi
+                </h2>
+                
+                <!-- Container scroll-snap -->
+                <div class="flex-grow flex flex-col overflow-y-auto snap-y snap-mandatory space-y-4">
+                
+                    <!-- Atas: Materi Iframe -->
+                    <div class="w-full h-full flex-shrink-0 border-4 border-green-500 rounded-lg bg-gray-50 overflow-hidden snap-start relative shadow-lg">
+                         <div class="absolute top-2 right-2 z-10 bg-white px-2 py-1 rounded text-xs font-bold text-green-600 shadow">Slide Materi</div>
+                        <iframe src="https://www.canva.com/design/DAG4vcThXDs/0x7N7lcxNemZgrtoXQ5JJg/view?embed" 
+                                class="w-full h-full" 
+                                frameborder="0" 
+                                allow="fullscreen"
+                                title="Materi Numerasiyu">
+                        </iframe>
+                    </div>
+
+                    <!-- Bawah: Pemindai QR -->
+                    <div class="w-full h-full flex-shrink-0 flex flex-col p-4 border-4 border-blue-500 rounded-lg bg-white items-center snap-start shadow-lg">
+                        <h3 class="text-lg font-semibold text-center text-blue-800 mb-2 flex items-center gap-2">
+                            <i data-lucide="scan-line" class="w-5 h-5"></i> Pemindai QR
+                        </h3>
+                        
+                        <!-- UI Pemindai -->
+                        <div id="qr-scanner-ui" class="w-full flex flex-col flex-grow justify-center min-h-0">
+                            
+                            <!-- Pesan Status -->
+                            <div id="qr-status-message" class="text-center text-gray-600 p-4 border-2 border-dashed rounded-lg bg-gray-50">
+                                Meminta izin kamera...
+                            </div>
+
+                            <!-- Wadah Video Pemindai -->
+                            <div id="qr-scanner-container" class="mb-4 w-full flex-grow relative rounded-lg overflow-hidden shadow-inner bg-black" style="display: none; min-height: 10rem;">
+                                <video id="qr-video" playsinline></video>
+                                
+                                <!-- Overlay Visual Pemindai -->
+                                <div class="absolute inset-0 border-2 border-blue-400 opacity-50 pointer-events-none m-8 rounded-lg"></div>
+                                <div class="absolute top-1/2 left-0 w-full h-0.5 bg-red-500 shadow-[0_0_8px_rgba(255,0,0,0.8)] animate-pulse"></div>
+                                
+                                <!-- Overlay Data Sensor Absolute Orientation (BARU) -->
+                                <div id="orientation-hud" class="absolute top-2 left-2 right-2 flex justify-between items-start pointer-events-none">
+                                    <div class="bg-black/60 text-white p-2 rounded text-[10px] font-mono backdrop-blur-sm border border-white/20">
+                                        <p class="font-bold text-yellow-400 mb-1 flex items-center gap-1"><i data-lucide="compass" class="w-3 h-3"></i> ABSOLUTE ORIENTATION</p>
+                                        <p id="hud-alpha">Alpha (Compass): --</p>
+                                        <p id="hud-beta">Beta (Tilt X): --</p>
+                                        <p id="hud-gamma">Gamma (Tilt Y): --</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Wadah Hasil Pindaian -->
+                            <div id="qr-result-container" class="w-full flex-grow flex flex-col min-h-0" style="display: none; min-height: 66%;">
+                                <p class="text-gray-700 font-semibold mb-2 flex items-center gap-2">
+                                    <i data-lucide="check-circle" class="w-4 h-4 text-green-500"></i> Hasil Pindaian:
+                                </p>
+                                
+                                <!-- Wrapper untuk Pratinjau + Tombol -->
+                                <div class="flex-1 flex space-x-2 min-h-0">
+                                    
+                                    <!-- Wrapper Kiri: Pratinjau -->
+                                    <div class="flex-1 min-h-0 min-w-0">
+                                        
+                                        <!-- Pratinjau Tautan (Iframe) -->
+                                        <div id="qr-iframe-preview" class="w-full h-full" style="display: none;">
+                                            <div class="w-full h-full border rounded-md bg-gray-100 overflow-hidden shadow-inner relative">
+                                                <iframe id="qr-outputFrame" class="w-full h-full" frameborder="0"></iframe>
+                                                <!-- Penutup transparan agar bisa di-scroll tapi tidak di-klik jika perlu -->
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Pratinjau Data (Textarea) -->
+                                        <div id="qr-data-preview" class="w-full h-full" style="display: none;">
+                                            <textarea id="qr-outputData" class="w-full h-full p-3 border rounded-md bg-gray-50 text-gray-800 font-mono text-sm resize-none focus:ring-2 focus:ring-blue-500 outline-none" readonly></textarea>
+                                        </div>
+
+                                    </div>
+
+                                    <!-- Wrapper Kanan: Tombol Aksi -->
+                                    <div class="flex flex-col space-y-2">
+                                        <button id="qr-copyButton" class="bg-green-500 text-white p-3 rounded-lg shadow hover:bg-green-600 transition flex items-center justify-center tooltip" title="Salin Teks">
+                                            <i data-lucide="copy" class="w-5 h-5"></i>
+                                        </button>
+                                        <button id="qr-scanAgainButton" class="bg-blue-500 text-white p-3 rounded-lg shadow hover:bg-blue-600 transition flex items-center justify-center" title="Pindai Lagi">
+                                            <i data-lucide="camera" class="w-5 h-5"></i>
+                                        </button>
+                                        <a id="qr-openLinkButton" href="#" target="_blank" class="bg-purple-500 text-white p-3 rounded-lg shadow hover:bg-purple-600 transition flex items-center justify-center" style="display:none;" title="Buka di Tab Baru">
+                                            <i data-lucide="external-link" class="w-5 h-5"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Halaman Asesmen/Kuis (Page 3) -->
+            <div id="page-asesmen" class="page hidden flex flex-col h-full">
+                <h2 class="text-xl font-semibold mb-4 text-red-600 flex items-center gap-2">
+                    <i data-lucide="calculator" class="w-6 h-6"></i> Halaman Kuis / Asesmen
+                </h2>
+                <div class="flex-grow border-4 border-red-500 rounded-lg bg-gray-50 overflow-hidden shadow-lg">
+                   <iframe src="https://wayground.com/embed/quiz/66dc55162cbae50f1111bf98" 
+                            class="w-full h-full" 
+                            frameborder="0" 
+                            allow="fullscreen"
+                            title="Asesmen Numerasiyu">
+                    </iframe>
+                </div>
+            </div>
+
+            <!-- Halaman Profil (Page 4) -->
+            <div id="page-profil" class="page hidden flex flex-col h-full">
+                <h2 class="text-xl font-semibold mb-4 text-yellow-600 flex items-center gap-2">
+                    <i data-lucide="user-circle" class="w-6 h-6"></i> Halaman Profil
+                </h2>
+                <div class="flex-grow rounded-lg bg-gradient-to-br from-yellow-50 to-white border-4 border-yellow-500 flex overflow-hidden shadow-lg">
+                    <div class="flex-1 p-4 md:p-8 bg-white m-2 md:m-4 rounded-lg shadow-sm overflow-y-auto">
+                        <h3 class="text-2xl font-bold text-blue-900 mb-6 border-b pb-2">Pengembang Aplikasi</h3>
+                        
+                        <div class="space-y-4">
+                            <div class="bg-blue-50 p-4 rounded-lg">
+                                <p class="text-sm text-blue-600 font-semibold uppercase tracking-wider">Dikembangkan Oleh</p>
+                                <p class="text-xl font-bold text-gray-800">Yusril Yahya Muhaimin</p>
+                            </div>
+                            
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <p class="text-sm text-gray-500 font-semibold uppercase tracking-wider">Pembimbing</p>
+                                <p class="text-lg font-medium text-gray-800">Prof. Dr. Sri Wardani, M.Si.</p>
+                            </div>
+                            
+                            <div class="mt-4 text-gray-600">
+                                <p class="font-medium">Program Studi Pendidikan Dasar</p>
+                                <p>Sekolah Pascasarjana</p>
+                                <p>Universitas Negeri Semarang</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-1/3 flex flex-col items-center justify-center p-4 bg-blue-900/5">
+                        <img src="https://unnes.ac.id/lppm/wp-content/uploads/sites/16/2015/08/Logo-Transparan-Warna-1.png" 
+                             alt="Logo UNNES" 
+                             class="w-32 h-auto mb-4 drop-shadow-md"
+                             onerror="this.src='https://placehold.co/150x150/F9E45B/003399?text=UNNES'; this.onerror=null;">
+                        <h4 class="font-bold text-lg text-blue-900 mt-2">UNNES</h4>
+                        <p class="text-[10px] font-bold text-blue-800 text-center tracking-widest">UNIVERSITAS NEGERI SEMARANG</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer Navigasi -->
+        <nav class="flex justify-around bg-white border-t p-2 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-50">
+            <button data-page="page-awal" class="nav-button flex flex-col items-center w-1/5 p-1 rounded-lg transition-colors hover:bg-gray-50" title="Halaman Awal">
+                <i data-lucide="home" class="w-6 h-6 text-blue-500"></i>
+                <span class="text-[10px] md:text-xs font-medium text-blue-500 mt-1">Beranda</span>
+            </button>
+            <button data-page="page-materi" class="nav-button flex flex-col items-center w-1/5 p-1 rounded-lg transition-colors hover:bg-gray-50" title="Materi">
+                <i data-lucide="book-open" class="w-6 h-6 text-green-500"></i>
+                <span class="text-[10px] md:text-xs font-medium text-gray-500 mt-1">Materi</span>
+            </button>
+            <button data-page="page-asesmen" class="nav-button flex flex-col items-center w-1/5 p-1 rounded-lg transition-colors hover:bg-gray-50" title="Asesmen">
+                <i data-lucide="calculator" class="w-6 h-6 text-red-500"></i>
+                <span class="text-[10px] md:text-xs font-medium text-gray-500 mt-1">Asesmen</span>
+            </button>
+            <button data-page="page-profil" class="nav-button flex flex-col items-center w-1/5 p-1 rounded-lg transition-colors hover:bg-gray-50" title="Profil">
+                <i data-lucide="user" class="w-6 h-6 text-yellow-500"></i>
+                <span class="text-[10px] md:text-xs font-medium text-gray-500 mt-1">Profil</span>
+            </button>
+            <button id="exit-button" class="flex flex-col items-center w-1/5 p-1 rounded-lg transition-colors hover:bg-red-50" title="Keluar">
+                <i data-lucide="log-out" class="w-6 h-6 text-red-500"></i>
+                <span class="text-[10px] md:text-xs font-medium text-red-500 mt-1">Keluar</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Canvas untuk pemrosesan QR (disembunyikan) -->
+    <canvas id="qr-canvas" style="display: none;"></canvas>
+
+    <script>
+        // Menginisialisasi ikon Lucide
+        lucide.createIcons();
+
+        // --- Global Sensor Data & AR Status ---
+        const sensorData = {
+            location: null,
+            orientation: { alpha: 0, beta: 0, gamma: 0 },
+            acceleration: { x: 0, y: 0, z: 0 },
+            absoluteOrientation: null, // Menyimpan Quaternion atau Euler Absolut
+            arSupported: false
+        };
+
+        // --- Logika untuk Pemindai QR ---
+        const qrVideo = document.getElementById('qr-video');
+        const qrCanvas = document.getElementById('qr-canvas');
+        const qrCanvasCtx = qrCanvas.getContext('2d');
+        const qrStatusMessage = document.getElementById('qr-status-message');
+        const qrScannerContainer = document.getElementById('qr-scanner-container');
+        const qrResultContainer = document.getElementById('qr-result-container');
+        
+        // Elemen HUD Sensor Baru
+        const hudAlpha = document.getElementById('hud-alpha');
+        const hudBeta = document.getElementById('hud-beta');
+        const hudGamma = document.getElementById('hud-gamma');
+        
+        const qrIframePreview = document.getElementById('qr-iframe-preview');
+        const qrOutputFrame = document.getElementById('qr-outputFrame');
+        const qrDataPreview = document.getElementById('qr-data-preview');
+        const qrOutputData = document.getElementById('qr-outputData');
+        
+        const qrCopyButton = document.getElementById('qr-copyButton');
+        const qrScanAgainButton = document.getElementById('qr-scanAgainButton');
+        const qrOpenLinkButton = document.getElementById('qr-openLinkButton');
+
+        let qrStream = null;
+        let qrAnimationLoopId = null;
+
+        function showQrError(message) {
+            qrStatusMessage.textContent = message;
+            qrStatusMessage.style.display = 'block';
+            qrScannerContainer.style.display = 'none';
+            qrResultContainer.style.display = 'none';
+        }
+
+        async function startQrScanner() {
+            qrStatusMessage.textContent = "Membuka kamera lingkungan...";
+            qrStatusMessage.style.display = 'block';
+            qrScannerContainer.style.display = 'none';
+            qrResultContainer.style.display = 'none';
+            qrIframePreview.style.display = 'none';
+            qrDataPreview.style.display = 'none';
+            qrOutputFrame.src = 'about:blank';
+
+            if (qrStream) {
+                qrStream.getTracks().forEach(track => track.stop());
+                qrStream = null;
+            }
+            if (qrAnimationLoopId) {
+                cancelAnimationFrame(qrAnimationLoopId);
+                qrAnimationLoopId = null;
+            }
+
+            if (typeof jsQR === 'undefined') {
+                showQrError("Gagal memuat pustaka QR. Periksa koneksi internet.");
+                return;
+            }
+
+            try {
+                // Mencoba kamera belakang (Environment) - Kunci untuk AR
+                qrStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "environment" } 
+                });
+
+                qrVideo.srcObject = qrStream;
+                qrVideo.style.display = 'block';
+                
+                // Tunggu video siap
+                qrVideo.onloadedmetadata = () => {
+                    qrStatusMessage.style.display = 'none';
+                    qrScannerContainer.style.display = 'block';
+                    qrVideo.play();
+                    qrAnimationLoopId = requestAnimationFrame(qrTick);
+                };
+
+            } catch (err) {
+                console.error("Error akses kamera QR: ", err);
+                let errorMessage = "Tidak bisa mengakses kamera.";
+                if (err.name === "NotAllowedError") {
+                    errorMessage = "Akses kamera ditolak. Segarkan halaman dan izinkan.";
+                } else if (err.name === "NotFoundError") {
+                    errorMessage = "Kamera belakang tidak ditemukan pada perangkat ini.";
+                } else if (err.name === "NotReadableError") {
+                     errorMessage = "Kamera sedang digunakan aplikasi lain.";
+                }
+                showQrError(errorMessage);
+            }
+        }
+
+        function stopQrScanner() {
+            if (qrStream) {
+                qrStream.getTracks().forEach(track => track.stop());
+                qrStream = null;
+            }
+            if (qrAnimationLoopId) {
+                cancelAnimationFrame(qrAnimationLoopId);
+                qrAnimationLoopId = null;
+            }
+            if (qrVideo) {
+                qrVideo.pause();
+                qrVideo.srcObject = null;
+            }
+        }
+
+        function qrTick() {
+            if (qrVideo.readyState === qrVideo.HAVE_ENOUGH_DATA) {
+                qrCanvas.height = qrVideo.videoHeight;
+                qrCanvas.width = qrVideo.videoWidth;
+                qrCanvasCtx.drawImage(qrVideo, 0, 0, qrCanvas.width, qrCanvas.height);
+                const imageData = qrCanvasCtx.getImageData(0, 0, qrCanvas.width, qrCanvas.height);
+                
+                const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: "dontInvert",
+                });
+
+                if (code) {
+                    handleQrCode(code.data);
+                    return;
+                }
+            }
+            if (qrStream && qrStream.active) {
+                qrAnimationLoopId = requestAnimationFrame(qrTick);
+            }
+        }
+
+        function handleQrCode(data) {
+            qrVideo.pause(); // Jeda video visual, jangan stop stream agar cepat nyala lagi
+            if (qrAnimationLoopId) {
+                cancelAnimationFrame(qrAnimationLoopId);
+                qrAnimationLoopId = null;
+            }
+
+            qrScannerContainer.style.display = 'none';
+            qrResultContainer.style.display = 'flex'; 
+            qrOutputData.value = data;
+
+            const isUrl = data.startsWith('http://') || data.startsWith('https://') || (data.startsWith('www.') && !data.includes(' '));
+
+            if (isUrl) {
+                let finalUrl = data.startsWith('www.') ? `https://${data}` : data;
+                qrOutputFrame.src = finalUrl;
+                qrIframePreview.style.display = 'block';
+                qrDataPreview.style.display = 'none';
+                
+                qrOpenLinkButton.href = finalUrl;
+                qrOpenLinkButton.style.display = 'flex';
+            } else {
+                qrIframePreview.style.display = 'none';
+                qrDataPreview.style.display = 'block';
+                qrOpenLinkButton.style.display = 'none';
+            }
+            
+            lucide.createIcons();
+        }
+
+        qrCopyButton.addEventListener('click', () => {
+            qrOutputData.select();
+            qrOutputData.setSelectionRange(0, 99999); // Mobile
+            try {
+                document.execCommand('copy');
+                const originalIcon = qrCopyButton.innerHTML;
+                qrCopyButton.innerHTML = '<i data-lucide="check" class="w-5 h-5"></i>';
+                lucide.createIcons();
+                qrCopyButton.classList.add('bg-blue-600');
+                
+                setTimeout(() => {
+                    qrCopyButton.innerHTML = '<i data-lucide="copy" class="w-5 h-5"></i>';
+                    lucide.createIcons();
+                    qrCopyButton.classList.remove('bg-blue-600');
+                }, 1500);
+            } catch (err) {
+                console.error('Gagal menyalin teks QR: ', err);
+            }
+        });
+
+        qrScanAgainButton.addEventListener('click', () => {
+            qrResultContainer.style.display = 'none';
+            qrScannerContainer.style.display = 'block';
+            qrVideo.play();
+            qrAnimationLoopId = requestAnimationFrame(qrTick);
+        });
+
+
+        // --- Logika Navigasi & Izin Sensor (Utama) ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const appContainer = document.getElementById('app-container');
+            const sensorOverlay = document.getElementById('sensor-permission-overlay');
+            const grantButton = document.getElementById('grant-permission-button');
+            const permissionStatus = document.getElementById('permission-status');
+            
+            // Tambahkan definisi variabel ini yang sebelumnya hilang
+            const navButtons = document.querySelectorAll('.nav-button');
+            const pages = document.querySelectorAll('.page');
+
+            const activeColors = {
+                'page-awal': 'text-blue-500',
+                'page-materi': 'text-green-500',
+                'page-asesmen': 'text-red-500',
+                'page-profil': 'text-yellow-500'
+            };
+
+            function showApp() {
+                sensorOverlay.style.display = 'none';
+                appContainer.style.display = 'flex';
+                // Pastikan ikon ter-render
+                lucide.createIcons();
+                setActivePage('page-awal');
+            }
+
+            // --- FUNGSI UPDATE HUD SENSOR ---
+            function updateSensorHUD(alpha, beta, gamma, isAbsolute) {
+                // Hanya update jika elemen terlihat
+                if (qrScannerContainer.style.display !== 'none') {
+                    hudAlpha.innerHTML = `Alpha: ${alpha.toFixed(1)}° <span class="${isAbsolute ? 'text-green-400' : 'text-gray-400'}">${isAbsolute ? '(ABS)' : '(REL)'}</span>`;
+                    hudBeta.textContent  = `Beta : ${beta.toFixed(1)}°`;
+                    hudGamma.textContent = `Gamma: ${gamma.toFixed(1)}°`;
+                }
+            }
+
+            // --- SCRIPT PERMINTAAN IZIN SENSOR & AR (ANDROID/iOS) ---
+            grantButton.addEventListener('click', async () => {
+                permissionStatus.textContent = "Memproses izin & Cek Kompatibilitas AR...";
+                
+                // 1. Izin Sensor Gerak (Penting untuk fitur AR berbasis orientasi)
+                if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    try {
+                        const response = await DeviceOrientationEvent.requestPermission();
+                        if (response === 'granted') {
+                            console.log("Izin DeviceOrientation diberikan");
+                        } else {
+                            alert("Izin sensor gerak ditolak. Fitur AR mungkin terbatas.");
+                        }
+                    } catch (e) {
+                        console.error("Error meminta izin orientasi:", e);
+                    }
+                }
+
+                // 2. IMPLEMENTASI ABSOLUTE ORIENTATION SENSOR
+                // Mencoba menggunakan Generic Sensor API (Modern) terlebih dahulu
+                if ('AbsoluteOrientationSensor' in window) {
+                    try {
+                        const options = { frequency: 60, referenceFrame: 'device' };
+                        const sensor = new AbsoluteOrientationSensor(options);
+                        
+                        sensor.addEventListener('reading', () => {
+                            // Konversi Quaternion ke Euler Angles untuk dibaca manusia
+                            // (Implementasi matematika sederhana untuk konversi q -> euler)
+                            const q = sensor.quaternion;
+                            // Simpan data mentah
+                            sensorData.absoluteOrientation = q;
+                            
+                            // Catatan: Konversi quaternion ke Euler (Alpha/Beta/Gamma) cukup kompleks 
+                            // di sini kita gunakan mapping sederhana atau logik raw jika diperlukan.
+                            // Untuk demo ini, kita akan menggunakan fallback event listener 
+                            // untuk update UI agar lebih konsisten dengan nilai derajat, 
+                            // tapi sensor ini aktif di background untuk presisi tinggi AR.
+                        });
+                        
+                        sensor.addEventListener('error', (error) => {
+                            if (error.name === 'NotReadableError') {
+                                console.log("AbsoluteOrientationSensor tidak dapat dibaca.");
+                            }
+                        });
+                        
+                        sensor.start();
+                        console.log("AbsoluteOrientationSensor (Generic API) AKTIF");
+                        
+                    } catch (error) {
+                        console.error("Gagal menginisialisasi AbsoluteOrientationSensor:", error);
+                    }
+                }
+
+                // 3. Listener Sensor Fallback & UI Update
+                // Menggunakan 'deviceorientationabsolute' (Android Chrome) atau 'deviceorientation' standard
+                // Ini lebih mudah digunakan untuk menampilkan angka derajat (0-360) ke UI
+                
+                if ('ondeviceorientationabsolute' in window) {
+                    // Chrome Android mendukung event khusus ini untuk orientasi absolut
+                    window.addEventListener('deviceorientationabsolute', (event) => {
+                        sensorData.orientation = {
+                            alpha: event.alpha, 
+                            beta: event.beta,   
+                            gamma: event.gamma  
+                        };
+                        updateSensorHUD(event.alpha, event.beta, event.gamma, true);
+                    });
+                } else {
+                    // Fallback ke standard, cek properti .absolute
+                    window.addEventListener('deviceorientation', (event) => {
+                        sensorData.orientation = {
+                            alpha: event.alpha, 
+                            beta: event.beta,   
+                            gamma: event.gamma  
+                        };
+                        // webkitCompassHeading adalah indikator absolut di iOS
+                        let heading = event.webkitCompassHeading || event.alpha; 
+                        let isAbsolute = event.absolute || (event.webkitCompassHeading !== undefined);
+                        
+                        updateSensorHUD(heading, event.beta, event.gamma, isAbsolute);
+                    });
+                }
+
+                window.addEventListener('devicemotion', (event) => {
+                    sensorData.acceleration = event.accelerationIncludingGravity;
+                });
+
+                // 4. Cek Dukungan WebXR (Augmented Reality untuk Android)
+                // Ini akan mengecek apakah perangkat mendukung 'immersive-ar'
+                if (navigator.xr) {
+                     try {
+                        const isArSupported = await navigator.xr.isSessionSupported('immersive-ar');
+                        console.log("Status Dukungan AR (WebXR):", isArSupported ? "Didukung" : "Tidak Didukung");
+                        sensorData.arSupported = isArSupported;
+                    } catch (e) {
+                        console.log("WebXR Check Error: ", e);
+                    }
+                } else {
+                    console.log("WebXR tidak tersedia di browser ini.");
+                }
+
+                // 5. Izin Lokasi (GPS)
+                if ('geolocation' in navigator) {
+                    permissionStatus.textContent = "Meminta lokasi...";
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            sensorData.location = {
+                                lat: position.coords.latitude,
+                                lng: position.coords.longitude
+                            };
+                            console.log("Lokasi didapat:", sensorData.location);
+                        },
+                        (error) => {
+                            console.warn("Gagal mendapatkan lokasi:", error.message);
+                        }
+                    );
+                }
+
+                // 6. "Pemanasan" Kamera AR
+                // Menggunakan facingMode: 'environment' (Kamera Belakang) yang wajib untuk AR
+                try {
+                    permissionStatus.textContent = "Menyiapkan kamera AR...";
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { facingMode: "environment" } 
+                    });
+                    // Langsung tutup, hanya untuk trigger izin
+                    stream.getTracks().forEach(track => track.stop());
+                    console.log("Akses kamera lingkungan AR dikonfirmasi.");
+                } catch (e) {
+                    console.log("Kamera AR belum diizinkan, akan diminta lagi nanti.");
+                }
+
+                // Selesai, masuk ke aplikasi
+                permissionStatus.textContent = "Semua sistem siap!";
+                setTimeout(showApp, 800);
+            });
+
+            // Cek orientasi saat memuat
+            if (window.matchMedia("(orientation: landscape)").matches) {
+                sensorOverlay.style.display = 'flex';
+                appContainer.style.display = 'none';
+            }
+
+            window.matchMedia("(orientation: portrait)").addEventListener("change", (e) => {
+                if (!e.matches) { // Landscape
+                    if (appContainer.style.display === 'none' && sensorOverlay.style.display === 'none') {
+                        sensorOverlay.style.display = 'flex';
+                    }
+                }
+            });
+            
+            function setActivePage(pageId) {
+                pages.forEach(page => {
+                    page.classList.add('hidden');
+                });
+                
+                const activePage = document.getElementById(pageId);
+                if (activePage) {
+                    activePage.classList.remove('hidden');
+                }
+                
+                navButtons.forEach(button => {
+                    const span = button.querySelector('span');
+                    const buttonPageId = button.dataset.page;
+                    
+                    span.classList.remove(...Object.values(activeColors));
+                    span.classList.add('text-gray-500');
+                    
+                    if (buttonPageId === pageId) {
+                        span.classList.remove('text-gray-500');
+                        span.classList.add(activeColors[pageId]);
+                    }
+                });
+
+                // Logika khusus halaman
+                if (pageId === 'page-materi') {
+                    startQrScanner();
+                } else {
+                    stopQrScanner();
+                }
+                
+                // Scroll ke atas setiap ganti halaman
+                if(activePage) activePage.scrollTop = 0;
+
+                lucide.createIcons();
+            }
+
+            navButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const pageId = button.dataset.page;
+                    setActivePage(pageId);
+                });
+            });
+
+            const exitButton = document.getElementById('exit-button');
+            if (exitButton) {
+                exitButton.addEventListener('click', () => {
+                    if(confirm("Apakah Anda yakin ingin keluar?")) {
+                        window.close(); // Hanya bekerja jika script membuka window, tapi ini placeholder yang umum
+                        // Fallback UI
+                        document.body.innerHTML = '<div class="flex items-center justify-center h-screen bg-gray-900 text-white"><h1>Aplikasi Ditutup. Silakan tutup tab ini.</h1></div>';
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
