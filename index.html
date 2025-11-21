@@ -208,14 +208,23 @@
                                 <div class="absolute inset-0 border-2 border-blue-400 opacity-50 pointer-events-none m-8 rounded-lg"></div>
                                 <div class="absolute top-1/2 left-0 w-full h-0.5 bg-red-500 shadow-[0_0_8px_rgba(255,0,0,0.8)] animate-pulse"></div>
                                 
-                                <!-- Overlay Data Sensor Absolute Orientation (BARU) -->
-                                <div id="orientation-hud" class="absolute top-2 left-2 right-2 flex justify-between items-start pointer-events-none">
-                                    <div class="bg-black/60 text-white p-2 rounded text-[10px] font-mono backdrop-blur-sm border border-white/20">
-                                        <p class="font-bold text-yellow-400 mb-1 flex items-center gap-1"><i data-lucide="compass" class="w-3 h-3"></i> ABSOLUTE ORIENTATION</p>
-                                        <p id="hud-alpha">Alpha (Compass): --</p>
-                                        <p id="hud-beta">Beta (Tilt X): --</p>
-                                        <p id="hud-gamma">Gamma (Tilt Y): --</p>
+                                <!-- Overlay Data Sensor HUD (Updated) -->
+                                <div id="orientation-hud" class="absolute top-2 left-2 right-2 flex flex-col gap-1 items-start pointer-events-none">
+                                    
+                                    <!-- Block 1: Absolute (Compass) -->
+                                    <div class="bg-black/60 text-white p-2 rounded text-[10px] font-mono backdrop-blur-sm border border-white/20 w-full">
+                                        <p class="font-bold text-yellow-400 mb-1 flex items-center gap-1"><i data-lucide="compass" class="w-3 h-3"></i> ABSOLUTE</p>
+                                        <p id="hud-alpha">Alpha: --</p>
+                                        <p id="hud-beta">Beta: --</p>
+                                        <p id="hud-gamma">Gamma: --</p>
                                     </div>
+
+                                    <!-- Block 2: Relative / Game Rotation Vector (BARU) -->
+                                    <div class="bg-black/60 text-white p-2 rounded text-[10px] font-mono backdrop-blur-sm border border-white/20 w-full mt-1">
+                                        <p class="font-bold text-green-400 mb-1 flex items-center gap-1"><i data-lucide="gamepad-2" class="w-3 h-3"></i> GAME ROTATION (Relative)</p>
+                                        <p id="hud-game-quaternion" class="break-words text-[9px]">Waiting sensor...</p>
+                                    </div>
+
                                 </div>
                             </div>
 
@@ -356,7 +365,8 @@
             location: null,
             orientation: { alpha: 0, beta: 0, gamma: 0 },
             acceleration: { x: 0, y: 0, z: 0 },
-            absoluteOrientation: null, // Menyimpan Quaternion atau Euler Absolut
+            absoluteOrientation: null, 
+            gameRotation: null, // BARU: Menyimpan data game rotation
             arSupported: false
         };
 
@@ -368,10 +378,11 @@
         const qrScannerContainer = document.getElementById('qr-scanner-container');
         const qrResultContainer = document.getElementById('qr-result-container');
         
-        // Elemen HUD Sensor Baru
+        // Elemen HUD Sensor
         const hudAlpha = document.getElementById('hud-alpha');
         const hudBeta = document.getElementById('hud-beta');
         const hudGamma = document.getElementById('hud-gamma');
+        const hudGameQuat = document.getElementById('hud-game-quaternion');
         
         const qrIframePreview = document.getElementById('qr-iframe-preview');
         const qrOutputFrame = document.getElementById('qr-outputFrame');
@@ -416,7 +427,6 @@
             }
 
             try {
-                // Mencoba kamera belakang (Environment) - Kunci untuk AR
                 qrStream = await navigator.mediaDevices.getUserMedia({ 
                     video: { facingMode: "environment" } 
                 });
@@ -424,7 +434,6 @@
                 qrVideo.srcObject = qrStream;
                 qrVideo.style.display = 'block';
                 
-                // Tunggu video siap
                 qrVideo.onloadedmetadata = () => {
                     qrStatusMessage.style.display = 'none';
                     qrScannerContainer.style.display = 'block';
@@ -438,7 +447,7 @@
                 if (err.name === "NotAllowedError") {
                     errorMessage = "Akses kamera ditolak. Segarkan halaman dan izinkan.";
                 } else if (err.name === "NotFoundError") {
-                    errorMessage = "Kamera belakang tidak ditemukan pada perangkat ini.";
+                    errorMessage = "Kamera belakang tidak ditemukan.";
                 } else if (err.name === "NotReadableError") {
                      errorMessage = "Kamera sedang digunakan aplikasi lain.";
                 }
@@ -483,7 +492,7 @@
         }
 
         function handleQrCode(data) {
-            qrVideo.pause(); // Jeda video visual, jangan stop stream agar cepat nyala lagi
+            qrVideo.pause();
             if (qrAnimationLoopId) {
                 cancelAnimationFrame(qrAnimationLoopId);
                 qrAnimationLoopId = null;
@@ -560,165 +569,123 @@
             function showApp() {
                 sensorOverlay.style.display = 'none';
                 appContainer.style.display = 'flex';
-                // Pastikan ikon ter-render
                 lucide.createIcons();
                 setActivePage('page-awal');
             }
 
             // --- FUNGSI UPDATE HUD SENSOR ---
             function updateSensorHUD(alpha, beta, gamma, isAbsolute) {
-                // Hanya update jika elemen terlihat
                 if (qrScannerContainer.style.display !== 'none') {
-                    hudAlpha.innerHTML = `Alpha: ${alpha.toFixed(1)}° <span class="${isAbsolute ? 'text-green-400' : 'text-gray-400'}">${isAbsolute ? '(ABS)' : '(REL)'}</span>`;
-                    hudBeta.textContent  = `Beta : ${beta.toFixed(1)}°`;
-                    hudGamma.textContent = `Gamma: ${gamma.toFixed(1)}°`;
+                    hudAlpha.innerHTML = `Alpha: ${alpha ? alpha.toFixed(1) : '--'}° <span class="${isAbsolute ? 'text-green-400' : 'text-gray-400'}">${isAbsolute ? '(ABS)' : '(REL)'}</span>`;
+                    hudBeta.textContent  = `Beta : ${beta ? beta.toFixed(1) : '--'}°`;
+                    hudGamma.textContent = `Gamma: ${gamma ? gamma.toFixed(1) : '--'}°`;
+                }
+            }
+            
+            // Fungsi update HUD Game Rotation (Relative)
+            function updateGameRotationHUD(quaternion) {
+                if (qrScannerContainer.style.display !== 'none' && quaternion) {
+                    // Format tampilan Quaternion (X, Y, Z, W)
+                    const [x, y, z, w] = quaternion;
+                    hudGameQuat.innerHTML = `Q[x:${x.toFixed(2)}, y:${y.toFixed(2)}, z:${z.toFixed(2)}, w:${w.toFixed(2)}]`;
+                    hudGameQuat.classList.add('text-green-300');
                 }
             }
 
-            // --- SCRIPT PERMINTAAN IZIN SENSOR & AR (ANDROID/iOS) ---
+            // --- SCRIPT PERMINTAAN IZIN SENSOR & AR ---
             grantButton.addEventListener('click', async () => {
-                permissionStatus.textContent = "Memproses izin & Cek Kompatibilitas AR...";
+                permissionStatus.textContent = "Memproses izin & Sensor...";
                 
-                // 1. Izin Sensor Gerak (Penting untuk fitur AR berbasis orientasi)
+                // 1. Izin DeviceOrientation Standard
                 if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
                     try {
-                        const response = await DeviceOrientationEvent.requestPermission();
-                        if (response === 'granted') {
-                            console.log("Izin DeviceOrientation diberikan");
-                        } else {
-                            alert("Izin sensor gerak ditolak. Fitur AR mungkin terbatas.");
-                        }
+                        await DeviceOrientationEvent.requestPermission();
                     } catch (e) {
-                        console.error("Error meminta izin orientasi:", e);
+                        console.error("Error orientasi:", e);
                     }
                 }
 
-                // 2. IMPLEMENTASI ABSOLUTE ORIENTATION SENSOR
-                // Mencoba menggunakan Generic Sensor API (Modern) terlebih dahulu
+                // 2. IMPLEMENTASI ABSOLUTE ORIENTATION (Magnetometer)
                 if ('AbsoluteOrientationSensor' in window) {
                     try {
-                        const options = { frequency: 60, referenceFrame: 'device' };
-                        const sensor = new AbsoluteOrientationSensor(options);
-                        
+                        const sensor = new AbsoluteOrientationSensor({ frequency: 60, referenceFrame: 'device' });
                         sensor.addEventListener('reading', () => {
-                            // Konversi Quaternion ke Euler Angles untuk dibaca manusia
-                            // (Implementasi matematika sederhana untuk konversi q -> euler)
-                            const q = sensor.quaternion;
-                            // Simpan data mentah
-                            sensorData.absoluteOrientation = q;
+                            sensorData.absoluteOrientation = sensor.quaternion;
+                        });
+                        sensor.start();
+                        console.log("AbsoluteOrientationSensor AKTIF");
+                    } catch (error) {
+                         if (error.name !== 'SecurityError') console.error(error);
+                    }
+                }
+
+                // 3. IMPLEMENTASI GAME ROTATION VECTOR (RelativeOrientationSensor) - BARU
+                // Ini adalah ekuivalen Web API untuk Sensor.TYPE_GAME_ROTATION_VECTOR di Android
+                if ('RelativeOrientationSensor' in window) {
+                    try {
+                        // referenceFrame 'device' berarti relatif terhadap posisi awal perangkat
+                        const gameSensor = new RelativeOrientationSensor({ frequency: 60, referenceFrame: 'device' });
+                        
+                        gameSensor.addEventListener('reading', () => {
+                            sensorData.gameRotation = gameSensor.quaternion;
+                            updateGameRotationHUD(gameSensor.quaternion);
                         });
                         
-                        sensor.addEventListener('error', (error) => {
-                            if (error.name === 'NotReadableError') {
-                                console.log("AbsoluteOrientationSensor tidak dapat dibaca.");
+                        gameSensor.addEventListener('error', (event) => {
+                            if (event.error.name === 'NotReadableError') {
+                                hudGameQuat.textContent = "Sensor tidak tersedia.";
+                            } else if (event.error.name === 'SecurityError') {
+                                hudGameQuat.textContent = "Sensor diblokir permission.";
                             }
                         });
                         
-                        sensor.start();
-                        console.log("AbsoluteOrientationSensor (Generic API) AKTIF");
+                        gameSensor.start();
+                        console.log("RelativeOrientationSensor (Game Rotation) AKTIF");
+                        hudGameQuat.textContent = "Sensor Aktif (Mengambil data...)";
                         
                     } catch (error) {
-                        // ERROR HANDLING KHUSUS UNTUK PERMISSIONS POLICY
-                        if (error.name === 'SecurityError') {
-                            console.warn("AbsoluteOrientationSensor diblokir oleh Permissions Policy. Menggunakan fallback.");
-                        } else {
-                            console.error("Gagal menginisialisasi AbsoluteOrientationSensor:", error);
-                        }
+                         if (error.name === 'SecurityError') {
+                            hudGameQuat.textContent = "Diblokir Keamanan (Iframe/Browser)";
+                         } else {
+                            hudGameQuat.textContent = "Gagal inisialisasi.";
+                            console.error(error);
+                         }
                     }
+                } else {
+                    hudGameQuat.textContent = "API tidak didukung browser ini.";
                 }
 
-                // 3. Listener Sensor Fallback & UI Update
-                // Menggunakan 'deviceorientationabsolute' (Android Chrome) atau 'deviceorientation' standard
-                // Ini lebih mudah digunakan untuk menampilkan angka derajat (0-360) ke UI
-                
+                // 4. Fallback Standard (Event Listener)
                 if ('ondeviceorientationabsolute' in window) {
-                    // Chrome Android mendukung event khusus ini untuk orientasi absolut
                     window.addEventListener('deviceorientationabsolute', (event) => {
-                        sensorData.orientation = {
-                            alpha: event.alpha, 
-                            beta: event.beta,   
-                            gamma: event.gamma  
-                        };
                         updateSensorHUD(event.alpha, event.beta, event.gamma, true);
                     });
                 } else {
-                    // Fallback ke standard, cek properti .absolute
                     window.addEventListener('deviceorientation', (event) => {
-                        sensorData.orientation = {
-                            alpha: event.alpha, 
-                            beta: event.beta,   
-                            gamma: event.gamma  
-                        };
-                        // webkitCompassHeading adalah indikator absolut di iOS
                         let heading = event.webkitCompassHeading || event.alpha; 
                         let isAbsolute = event.absolute || (event.webkitCompassHeading !== undefined);
-                        
                         updateSensorHUD(heading, event.beta, event.gamma, isAbsolute);
                     });
                 }
 
-                window.addEventListener('devicemotion', (event) => {
-                    sensorData.acceleration = event.accelerationIncludingGravity;
-                });
-
-                // 4. Cek Dukungan WebXR (Augmented Reality untuk Android)
-                // Ini akan mengecek apakah perangkat mendukung 'immersive-ar'
-                if (navigator.xr) {
-                     try {
-                        const isArSupported = await navigator.xr.isSessionSupported('immersive-ar');
-                        console.log("Status Dukungan AR (WebXR):", isArSupported ? "Didukung" : "Tidak Didukung");
-                        sensorData.arSupported = isArSupported;
-                    } catch (e) {
-                        console.log("WebXR Check Error: ", e);
-                    }
-                } else {
-                    console.log("WebXR tidak tersedia di browser ini.");
-                }
-
-                // 5. Izin Lokasi (GPS)
-                if ('geolocation' in navigator) {
-                    permissionStatus.textContent = "Meminta lokasi...";
-                    navigator.geolocation.getCurrentPosition(
-                        (position) => {
-                            sensorData.location = {
-                                lat: position.coords.latitude,
-                                lng: position.coords.longitude
-                            };
-                            console.log("Lokasi didapat:", sensorData.location);
-                        },
-                        (error) => {
-                            console.warn("Gagal mendapatkan lokasi:", error.message);
-                        }
-                    );
-                }
-
-                // 6. "Pemanasan" Kamera AR
-                // Menggunakan facingMode: 'environment' (Kamera Belakang) yang wajib untuk AR
+                // 5. Pemanasan Kamera & Lainnya
                 try {
-                    permissionStatus.textContent = "Menyiapkan kamera AR...";
-                    const stream = await navigator.mediaDevices.getUserMedia({ 
-                        video: { facingMode: "environment" } 
-                    });
-                    // Langsung tutup, hanya untuk trigger izin
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
                     stream.getTracks().forEach(track => track.stop());
-                    console.log("Akses kamera lingkungan AR dikonfirmasi.");
-                } catch (e) {
-                    console.log("Kamera AR belum diizinkan, akan diminta lagi nanti.");
-                }
+                } catch (e) {}
 
-                // Selesai, masuk ke aplikasi
-                permissionStatus.textContent = "Semua sistem siap!";
+                permissionStatus.textContent = "Selesai!";
                 setTimeout(showApp, 800);
             });
 
-            // Cek orientasi saat memuat
+            // Orientasi Handler
             if (window.matchMedia("(orientation: landscape)").matches) {
                 sensorOverlay.style.display = 'flex';
                 appContainer.style.display = 'none';
             }
 
             window.matchMedia("(orientation: portrait)").addEventListener("change", (e) => {
-                if (!e.matches) { // Landscape
+                if (!e.matches) { 
                     if (appContainer.style.display === 'none' && sensorOverlay.style.display === 'none') {
                         sensorOverlay.style.display = 'flex';
                     }
@@ -726,56 +693,40 @@
             });
             
             function setActivePage(pageId) {
-                pages.forEach(page => {
-                    page.classList.add('hidden');
-                });
-                
+                pages.forEach(page => page.classList.add('hidden'));
                 const activePage = document.getElementById(pageId);
-                if (activePage) {
-                    activePage.classList.remove('hidden');
-                }
+                if (activePage) activePage.classList.remove('hidden');
                 
                 navButtons.forEach(button => {
                     const span = button.querySelector('span');
                     const buttonPageId = button.dataset.page;
-                    
                     span.classList.remove(...Object.values(activeColors));
                     span.classList.add('text-gray-500');
-                    
                     if (buttonPageId === pageId) {
                         span.classList.remove('text-gray-500');
                         span.classList.add(activeColors[pageId]);
                     }
                 });
 
-                // Logika khusus halaman
                 if (pageId === 'page-materi') {
                     startQrScanner();
                 } else {
                     stopQrScanner();
                 }
-                
-                // Scroll ke atas setiap ganti halaman
                 if(activePage) activePage.scrollTop = 0;
-
                 lucide.createIcons();
             }
 
             navButtons.forEach(button => {
                 button.addEventListener('click', () => {
-                    const pageId = button.dataset.page;
-                    setActivePage(pageId);
+                    setActivePage(button.dataset.page);
                 });
             });
-
+            
             const exitButton = document.getElementById('exit-button');
             if (exitButton) {
                 exitButton.addEventListener('click', () => {
-                    if(confirm("Apakah Anda yakin ingin keluar?")) {
-                        window.close(); // Hanya bekerja jika script membuka window, tapi ini placeholder yang umum
-                        // Fallback UI
-                        document.body.innerHTML = '<div class="flex items-center justify-center h-screen bg-gray-900 text-white"><h1>Aplikasi Ditutup. Silakan tutup tab ini.</h1></div>';
-                    }
+                     if(confirm("Keluar aplikasi?")) window.close();
                 });
             }
         });
