@@ -2,8 +2,8 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NUMERASIYU - Sensor & AR Ready</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NUMERASIYU - Responsif</title>
     
     <!-- Memuat Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -19,34 +19,21 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
+            overscroll-behavior: none; /* Mencegah pull-to-refresh di mobile */
         }
         
         /* Menyembunyikan halaman yang tidak aktif */
         .page.hidden {
             display: none;
         }
-        
-        /* Hamparan untuk meminta rotasi */
-        #rotate-overlay {
-            display: none; /* Disembunyikan secara default */
-            position: fixed;
-            inset: 0;
-            background-color: #f3f4f6; /* bg-gray-100 */
-            z-index: 9999;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 1rem;
-        }
 
-        /* Hamparan Izin Sensor (BARU) */
+        /* Hamparan Izin Sensor */
         #sensor-permission-overlay {
-            display: none; /* Disembunyikan secara default */
+            display: flex; /* Tampil default sampai di-handle JS */
             position: fixed;
             inset: 0;
-            background-color: rgba(0, 0, 0, 0.85); /* Latar belakang lebih gelap */
-            z-index: 9998; /* Di bawah rotate, tapi di atas app */
+            background-color: rgba(0, 0, 0, 0.85);
+            z-index: 9998;
             flex-direction: column;
             align-items: center;
             justify-content: center;
@@ -54,31 +41,13 @@
             padding: 1rem;
         }
         
-        /* Saat dalam mode portrait */
-        @media (orientation: portrait) {
-            #app-container, #sensor-permission-overlay {
-                display: none; /* Sembunyikan aplikasi & izin */
-            }
-            #rotate-overlay {
-                display: flex; /* Tampilkan hamparan rotasi */
-            }
-        }
-
-        /* Saat dalam mode landscape */
-        @media (orientation: landscape) {
-            /* Logika untuk menampilkan izin ATAU aplikasi akan ditangani oleh JS */
-            #rotate-overlay {
-                display: none; /* Sembunyikan hamparan rotasi */
-            }
-        }
-
         /* Style khusus untuk pemindai QR */
         #qr-video, #qr-canvas {
             display: none;
         }
         #qr-scanner-container {
             overflow: hidden;
-            background-color: #333;
+            background-color: #000;
         }
         #qr-video {
             position: absolute;
@@ -86,98 +55,99 @@
             left: 0;
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: cover; /* Memastikan video mengisi area tanpa distorsi */
             display: block;
+        }
+        
+        /* Animasi Pulse untuk Scanner */
+        @keyframes scan-pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+        .animate-scan-pulse {
+            animation: scan-pulse 2s infinite;
         }
     </style>
 </head>
-<body class="bg-gray-100">
-
-    <!-- Hamparan Peringatan Rotasi -->
-    <div id="rotate-overlay">
-        <i data-lucide="rotate-cw" class="w-16 h-16 text-gray-700 mb-4 animate-spin" style="animation-duration: 3s;"></i>
-        <h2 class="text-xl font-semibold text-gray-800">Harap Putar Perangkat Anda</h2>
-        <p class="text-gray-600 mt-2">Aplikasi ini dirancang untuk tampilan landscape.</p>
-    </div>
+<body class="bg-gray-100 h-screen w-screen overflow-hidden flex flex-col">
 
     <!-- Hamparan Izin Sensor -->
     <div id="sensor-permission-overlay">
-        <div class="bg-white p-6 md:p-8 rounded-xl shadow-2xl max-w-lg w-full transform transition-all">
+        <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full transform transition-all m-4">
             <div class="flex justify-center mb-4">
                 <div class="bg-blue-100 p-4 rounded-full">
-                    <i data-lucide="scan-face" class="w-12 h-12 text-blue-600"></i>
+                    <i data-lucide="scan-face" class="w-10 h-10 text-blue-600"></i>
                 </div>
             </div>
-            <h2 class="text-2xl font-bold text-gray-800 text-center mb-3">Izin & Fitur AR</h2>
+            <h2 class="text-xl font-bold text-gray-800 text-center mb-2">Selamat Datang!</h2>
             <p class="text-gray-600 text-center mb-4 text-sm">
-                Aplikasi Numerasiyu memerlukan akses ke fitur Augmented Reality (AR) dan sensor perangkat Android Anda:
+                Untuk pengalaman terbaik, izinkan akses sensor & kamera.
             </p>
             
-            <div class="space-y-3 mb-6 text-left bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <div class="space-y-2 mb-6 text-left bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs">
                 <div class="flex items-center">
-                    <i data-lucide="camera" class="w-5 h-5 text-blue-500 mr-3"></i>
-                    <span class="text-sm text-gray-700"><strong>Kamera AR:</strong> Membuka akses kamera lingkungan.</span>
+                    <i data-lucide="smartphone" class="w-4 h-4 text-blue-500 mr-2"></i>
+                    <span>Orientasi Layar & AR</span>
                 </div>
                 <div class="flex items-center">
-                    <i data-lucide="smartphone" class="w-5 h-5 text-purple-500 mr-3"></i>
-                    <span class="text-sm text-gray-700"><strong>Sensor AR (Android):</strong> Mengaktifkan dukungan WebXR/ARCore.</span>
-                </div>
-                <div class="flex items-center">
-                    <i data-lucide="map-pin" class="w-5 h-5 text-red-500 mr-3"></i>
-                    <span class="text-sm text-gray-700"><strong>Lokasi:</strong> Menentukan lokasi pembelajaran.</span>
+                    <i data-lucide="camera" class="w-4 h-4 text-purple-500 mr-2"></i>
+                    <span>Kamera (QR Scanner)</span>
                 </div>
             </div>
 
-            <button id="grant-permission-button" class="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition duration-300 flex items-center justify-center gap-2">
-                <span>Izinkan & Aktifkan AR</span>
-                <i data-lucide="arrow-right" class="w-5 h-5"></i>
+            <button id="grant-permission-button" class="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 active:scale-95 transition duration-200 flex items-center justify-center gap-2">
+                <span>Mulai Aplikasi</span>
+                <i data-lucide="arrow-right" class="w-4 h-4"></i>
             </button>
-            <p id="permission-status" class="text-xs text-gray-400 mt-3 text-center italic h-4"></p>
+            <p id="permission-status" class="text-[10px] text-gray-400 mt-2 text-center italic h-4"></p>
         </div>
     </div>
 
     <!-- Container Utama Aplikasi (Awalnya disembunyikan) -->
-    <div id="app-container" class="bg-white flex-col w-screen h-screen" style="display: none;">
+    <div id="app-container" class="bg-white flex flex-col w-full h-full" style="display: none;">
 
         <!-- Konten Utama (Halaman yang bisa diganti) -->
-        <main class="flex-grow p-4 overflow-auto">
+        <main class="flex-grow p-2 md:p-4 overflow-hidden relative">
 
-            <!-- Halaman Awal (Page 1) -->
-            <div id="page-awal" class="page h-full" 
-                 style="background-image: url('https://cdn.pixabay.com/photo/2021/05/05/11/43/modern-6230891_1280.png'); background-size: cover; background-position: center; background-repeat: no-repeat;">
+            <!-- Halaman Awal (Page 1) - Responsif -->
+            <div id="page-awal" class="page h-full w-full relative rounded-xl overflow-hidden" 
+                 style="background-image: url('https://cdn.pixabay.com/photo/2021/05/05/11/43/modern-6230891_1280.png'); background-size: cover; background-position: center;">
                 
-                <div class="flex flex-col items-center justify-center text-center h-full relative z-10 bg-white bg-opacity-80 p-6 rounded-xl backdrop-blur-sm border border-white/50 shadow-xl">
+                <!-- Overlay Gelap agar teks terbaca -->
+                <div class="absolute inset-0 bg-black/10"></div>
+
+                <div class="flex flex-col items-center justify-center text-center h-full relative z-10 bg-white/90 backdrop-blur-sm p-6 m-4 md:m-10 rounded-2xl shadow-2xl border border-white/50 max-w-2xl mx-auto">
                     <img src="https://unnes.ac.id/lppm/wp-content/uploads/sites/16/2015/08/Logo-Transparan-Warna-1.png" 
                          alt="Logo UNNES" 
-                         class="w-40 h-auto mb-6 hover:scale-105 transition-transform duration-300"
+                         class="w-28 md:w-40 h-auto mb-4 md:mb-6 hover:scale-105 transition-transform duration-300"
                          onerror="this.src='https://placehold.co/200x200/F9E45B/003399?text=UNNES'; this.onerror=null;">
                     
-                    <div class="bg-white px-8 py-4 rounded-xl shadow-md border-l-4 border-blue-500 mb-6">
-                        <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-yellow-500">NUMERASIYU</h1>
+                    <div class="bg-white px-6 py-3 md:px-8 md:py-4 rounded-xl shadow-inner border-l-4 border-blue-500 mb-4 md:mb-6">
+                        <h1 class="text-2xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-yellow-500">NUMERASIYU</h1>
                     </div>
                     
-                    <p class="text-gray-800 font-semibold text-lg">Media Pembelajaran Interaktif</p>
-                    <p class="text-gray-600 text-sm mt-2">Silakan pilih menu di bawah untuk memulai.</p>
+                    <p class="text-gray-800 font-semibold text-sm md:text-lg">Media Pembelajaran Interaktif</p>
+                    <p class="text-gray-500 text-xs md:text-sm mt-2">Gunakan menu di bawah untuk navigasi.</p>
                     
                     <!-- Indikator Status Sensor -->
-                    <div class="mt-6 flex gap-3 text-xs text-gray-500 bg-white/80 py-2 px-4 rounded-full shadow-sm border border-gray-200">
-                        <span class="flex items-center gap-1"><div class="w-2 h-2 rounded-full bg-green-500"></div> Sensor & AR Ready</span>
+                    <div class="mt-6 flex gap-2 text-[10px] md:text-xs text-gray-500 bg-gray-100 py-1 px-3 rounded-full border border-gray-200">
+                        <span class="flex items-center gap-1"><div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div> Sistem Siap</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Halaman Materi (Page 2) -->
+            <!-- Halaman Materi (Page 2) - Responsif -->
             <div id="page-materi" class="page hidden flex flex-col h-full">
-                <h2 class="text-xl font-semibold mb-4 text-green-600 flex items-center gap-2">
-                    <i data-lucide="book-open" class="w-6 h-6"></i> Halaman Materi
+                <h2 class="text-lg md:text-xl font-semibold mb-2 text-green-600 flex items-center gap-2 px-2">
+                    <i data-lucide="book-open" class="w-5 h-5"></i> Materi & Scan
                 </h2>
                 
-                <!-- Container scroll-snap -->
-                <div class="flex-grow flex flex-col overflow-y-auto snap-y snap-mandatory space-y-4">
+                <!-- Container scroll-snap Vertikal -->
+                <div class="flex-grow flex flex-col overflow-y-auto snap-y snap-mandatory gap-4 pb-2">
                 
-                    <!-- Atas: Materi Iframe -->
-                    <div class="w-full h-full flex-shrink-0 border-4 border-green-500 rounded-lg bg-gray-50 overflow-hidden snap-start relative shadow-lg">
-                         <div class="absolute top-2 right-2 z-10 bg-white px-2 py-1 rounded text-xs font-bold text-green-600 shadow">Slide Materi</div>
+                    <!-- Atas: Materi Iframe (Tinggi menyesuaikan) -->
+                    <div class="w-full flex-shrink-0 h-[60vh] md:h-full border-2 border-green-500 rounded-lg bg-gray-50 overflow-hidden snap-start relative shadow-md">
+                         <div class="absolute top-2 right-2 z-10 bg-white px-2 py-1 rounded text-[10px] font-bold text-green-600 shadow opacity-80">Slide Materi</div>
                         <iframe src="https://www.canva.com/design/DAG4vcThXDs/0x7N7lcxNemZgrtoXQ5JJg/view?embed" 
                                 class="w-full h-full" 
                                 frameborder="0" 
@@ -186,86 +156,71 @@
                         </iframe>
                     </div>
 
-                    <!-- Bawah: Pemindai QR -->
-                    <div class="w-full h-full flex-shrink-0 flex flex-col p-4 border-4 border-blue-500 rounded-lg bg-white items-center snap-start shadow-lg">
-                        <h3 class="text-lg font-semibold text-center text-blue-800 mb-2 flex items-center gap-2">
-                            <i data-lucide="scan-line" class="w-5 h-5"></i> Pemindai QR
+                    <!-- Bawah: Pemindai QR (Tinggi menyesuaikan) -->
+                    <div class="w-full flex-shrink-0 h-[50vh] md:h-full flex flex-col p-3 border-2 border-blue-500 rounded-lg bg-white items-center snap-start shadow-md relative">
+                        <div class="w-12 h-1 bg-gray-300 rounded-full mb-2 md:hidden"></div> <!-- Handle bar visual -->
+                        
+                        <h3 class="text-sm md:text-lg font-semibold text-center text-blue-800 mb-2 flex items-center gap-2">
+                            <i data-lucide="scan-line" class="w-4 h-4"></i> Pemindai QR
                         </h3>
                         
                         <!-- UI Pemindai -->
-                        <div id="qr-scanner-ui" class="w-full flex flex-col flex-grow justify-center min-h-0">
+                        <div id="qr-scanner-ui" class="w-full flex flex-col flex-grow justify-center min-h-0 relative">
                             
                             <!-- Pesan Status -->
-                            <div id="qr-status-message" class="text-center text-gray-600 p-4 border-2 border-dashed rounded-lg bg-gray-50">
-                                Meminta izin kamera...
+                            <div id="qr-status-message" class="text-center text-xs text-gray-600 p-4 border-2 border-dashed rounded-lg bg-gray-50">
+                                Kamera nonaktif.
                             </div>
 
                             <!-- Wadah Video Pemindai -->
-                            <div id="qr-scanner-container" class="mb-4 w-full flex-grow relative rounded-lg overflow-hidden shadow-inner bg-black" style="display: none; min-height: 10rem;">
+                            <div id="qr-scanner-container" class="mb-2 w-full flex-grow relative rounded-lg overflow-hidden shadow-inner bg-black" style="display: none;">
                                 <video id="qr-video" playsinline></video>
                                 
                                 <!-- Overlay Visual Pemindai -->
-                                <div class="absolute inset-0 border-2 border-blue-400 opacity-50 pointer-events-none m-8 rounded-lg"></div>
-                                <div class="absolute top-1/2 left-0 w-full h-0.5 bg-red-500 shadow-[0_0_8px_rgba(255,0,0,0.8)] animate-pulse"></div>
+                                <div class="absolute inset-0 border-2 border-blue-400/50 pointer-events-none m-6 md:m-10 rounded-lg"></div>
+                                <div class="absolute top-1/2 left-6 right-6 h-0.5 bg-red-500 shadow-[0_0_8px_rgba(255,0,0,0.8)] animate-scan-pulse pointer-events-none"></div>
                                 
-                                <!-- Overlay Data Sensor HUD (Updated) -->
-                                <div id="orientation-hud" class="absolute top-2 left-2 right-2 flex flex-col gap-1 items-start pointer-events-none">
-                                    
-                                    <!-- Block 1: Absolute (Compass) -->
-                                    <div class="bg-black/60 text-white p-2 rounded text-[10px] font-mono backdrop-blur-sm border border-white/20 w-full">
-                                        <p class="font-bold text-yellow-400 mb-1 flex items-center gap-1"><i data-lucide="compass" class="w-3 h-3"></i> ABSOLUTE</p>
-                                        <p id="hud-alpha">Alpha: --</p>
-                                        <p id="hud-beta">Beta: --</p>
-                                        <p id="hud-gamma">Gamma: --</p>
+                                <!-- Overlay Data Sensor HUD -->
+                                <div id="orientation-hud" class="absolute top-2 left-2 right-2 flex flex-col gap-1 items-start pointer-events-none z-20">
+                                    <div class="bg-black/60 text-white p-1.5 rounded text-[9px] md:text-[10px] font-mono backdrop-blur-sm border border-white/20 w-full">
+                                        <p class="font-bold text-yellow-400 mb-0.5 flex items-center gap-1"><i data-lucide="compass" class="w-3 h-3"></i> ABSOLUTE</p>
+                                        <div class="grid grid-cols-3 gap-1">
+                                            <p id="hud-alpha">A:--</p>
+                                            <p id="hud-beta">B:--</p>
+                                            <p id="hud-gamma">G:--</p>
+                                        </div>
                                     </div>
-
-                                    <!-- Block 2: Relative / Game Rotation Vector (BARU) -->
-                                    <div class="bg-black/60 text-white p-2 rounded text-[10px] font-mono backdrop-blur-sm border border-white/20 w-full mt-1">
-                                        <p class="font-bold text-green-400 mb-1 flex items-center gap-1"><i data-lucide="gamepad-2" class="w-3 h-3"></i> GAME ROTATION (Relative)</p>
-                                        <p id="hud-game-quaternion" class="break-words text-[9px]">Waiting sensor...</p>
+                                    <div class="bg-black/60 text-white p-1.5 rounded text-[9px] md:text-[10px] font-mono backdrop-blur-sm border border-white/20 w-full">
+                                        <p class="font-bold text-green-400 mb-0.5 flex items-center gap-1"><i data-lucide="gamepad-2" class="w-3 h-3"></i> ROTATION</p>
+                                        <p id="hud-game-quaternion" class="truncate">Waiting...</p>
                                     </div>
-
                                 </div>
                             </div>
 
                             <!-- Wadah Hasil Pindaian -->
-                            <div id="qr-result-container" class="w-full flex-grow flex flex-col min-h-0" style="display: none; min-height: 66%;">
-                                <p class="text-gray-700 font-semibold mb-2 flex items-center gap-2">
-                                    <i data-lucide="check-circle" class="w-4 h-4 text-green-500"></i> Hasil Pindaian:
+                            <div id="qr-result-container" class="w-full flex-grow flex flex-col min-h-0" style="display: none;">
+                                <p class="text-gray-700 text-xs font-semibold mb-1 flex items-center gap-1">
+                                    <i data-lucide="check-circle" class="w-3 h-3 text-green-500"></i> Hasil:
                                 </p>
                                 
                                 <!-- Wrapper untuk Pratinjau + Tombol -->
-                                <div class="flex-1 flex space-x-2 min-h-0">
+                                <div class="flex-1 flex flex-col md:flex-row gap-2 min-h-0">
                                     
                                     <!-- Wrapper Kiri: Pratinjau -->
-                                    <div class="flex-1 min-h-0 min-w-0">
-                                        
-                                        <!-- Pratinjau Tautan (Iframe) -->
+                                    <div class="flex-1 min-h-0 min-w-0 border rounded-md overflow-hidden bg-gray-50">
                                         <div id="qr-iframe-preview" class="w-full h-full" style="display: none;">
-                                            <div class="w-full h-full border rounded-md bg-gray-100 overflow-hidden shadow-inner relative">
-                                                <iframe id="qr-outputFrame" class="w-full h-full" frameborder="0"></iframe>
-                                                <!-- Penutup transparan agar bisa di-scroll tapi tidak di-klik jika perlu -->
-                                            </div>
+                                            <iframe id="qr-outputFrame" class="w-full h-full" frameborder="0"></iframe>
                                         </div>
-                                        
-                                        <!-- Pratinjau Data (Textarea) -->
                                         <div id="qr-data-preview" class="w-full h-full" style="display: none;">
-                                            <textarea id="qr-outputData" class="w-full h-full p-3 border rounded-md bg-gray-50 text-gray-800 font-mono text-sm resize-none focus:ring-2 focus:ring-blue-500 outline-none" readonly></textarea>
+                                            <textarea id="qr-outputData" class="w-full h-full p-2 bg-transparent text-gray-800 font-mono text-xs resize-none outline-none" readonly></textarea>
                                         </div>
-
                                     </div>
 
-                                    <!-- Wrapper Kanan: Tombol Aksi -->
-                                    <div class="flex flex-col space-y-2">
-                                        <button id="qr-copyButton" class="bg-green-500 text-white p-3 rounded-lg shadow hover:bg-green-600 transition flex items-center justify-center tooltip" title="Salin Teks">
-                                            <i data-lucide="copy" class="w-5 h-5"></i>
-                                        </button>
-                                        <button id="qr-scanAgainButton" class="bg-blue-500 text-white p-3 rounded-lg shadow hover:bg-blue-600 transition flex items-center justify-center" title="Pindai Lagi">
-                                            <i data-lucide="camera" class="w-5 h-5"></i>
-                                        </button>
-                                        <a id="qr-openLinkButton" href="#" target="_blank" class="bg-purple-500 text-white p-3 rounded-lg shadow hover:bg-purple-600 transition flex items-center justify-center" style="display:none;" title="Buka di Tab Baru">
-                                            <i data-lucide="external-link" class="w-5 h-5"></i>
-                                        </a>
+                                    <!-- Wrapper Kanan: Tombol Aksi (Horizontal di mobile, vertical di desktop) -->
+                                    <div class="flex flex-row md:flex-col gap-2 justify-center">
+                                        <button id="qr-copyButton" class="bg-green-500 text-white p-2 rounded shadow hover:bg-green-600 flex-1 md:flex-none flex justify-center"><i data-lucide="copy" class="w-4 h-4"></i></button>
+                                        <button id="qr-scanAgainButton" class="bg-blue-500 text-white p-2 rounded shadow hover:bg-blue-600 flex-1 md:flex-none flex justify-center"><i data-lucide="camera" class="w-4 h-4"></i></button>
+                                        <a id="qr-openLinkButton" href="#" target="_blank" class="bg-purple-500 text-white p-2 rounded shadow hover:bg-purple-600 flex-1 md:flex-none flex justify-center" style="display:none;"><i data-lucide="external-link" class="w-4 h-4"></i></a>
                                     </div>
                                 </div>
                             </div>
@@ -274,12 +229,12 @@
                 </div>
             </div>
 
-            <!-- Halaman Asesmen/Kuis (Page 3) -->
+            <!-- Halaman Asesmen/Kuis (Page 3) - Responsif -->
             <div id="page-asesmen" class="page hidden flex flex-col h-full">
-                <h2 class="text-xl font-semibold mb-4 text-red-600 flex items-center gap-2">
-                    <i data-lucide="calculator" class="w-6 h-6"></i> Halaman Kuis / Asesmen
+                <h2 class="text-lg md:text-xl font-semibold mb-2 text-red-600 flex items-center gap-2 px-2">
+                    <i data-lucide="calculator" class="w-5 h-5"></i> Asesmen
                 </h2>
-                <div class="flex-grow border-4 border-red-500 rounded-lg bg-gray-50 overflow-hidden shadow-lg">
+                <div class="flex-grow border-2 border-red-500 rounded-lg bg-gray-50 overflow-hidden shadow-md">
                    <iframe src="https://wayground.com/embed/quiz/66dc55162cbae50f1111bf98" 
                             class="w-full h-full" 
                             frameborder="0" 
@@ -289,66 +244,72 @@
                 </div>
             </div>
 
-            <!-- Halaman Profil (Page 4) -->
+            <!-- Halaman Profil (Page 4) - Responsif (Portrait: Stack, Landscape: Side-by-Side) -->
             <div id="page-profil" class="page hidden flex flex-col h-full">
-                <h2 class="text-xl font-semibold mb-4 text-yellow-600 flex items-center gap-2">
-                    <i data-lucide="user-circle" class="w-6 h-6"></i> Halaman Profil
+                <h2 class="text-lg md:text-xl font-semibold mb-2 text-yellow-600 flex items-center gap-2 px-2">
+                    <i data-lucide="user-circle" class="w-5 h-5"></i> Profil
                 </h2>
-                <div class="flex-grow rounded-lg bg-gradient-to-br from-yellow-50 to-white border-4 border-yellow-500 flex overflow-hidden shadow-lg">
-                    <div class="flex-1 p-4 md:p-8 bg-white m-2 md:m-4 rounded-lg shadow-sm overflow-y-auto">
-                        <h3 class="text-2xl font-bold text-blue-900 mb-6 border-b pb-2">Pengembang Aplikasi</h3>
+                
+                <!-- Gunakan flex-col untuk Mobile/Portrait, dan md:flex-row untuk Desktop/Landscape -->
+                <div class="flex-grow rounded-lg bg-gradient-to-b from-yellow-50 to-white border-2 border-yellow-500 flex flex-col md:flex-row overflow-hidden shadow-md">
+                    
+                    <!-- Area Teks -->
+                    <div class="flex-1 p-4 md:p-8 overflow-y-auto order-2 md:order-1">
+                        <h3 class="text-xl md:text-2xl font-bold text-blue-900 mb-4 border-b pb-2">Pengembang</h3>
                         
-                        <div class="space-y-4">
-                            <div class="bg-blue-50 p-4 rounded-lg">
-                                <p class="text-sm text-blue-600 font-semibold uppercase tracking-wider">Dikembangkan Oleh</p>
-                                <p class="text-xl font-bold text-gray-800">Yusril Yahya Muhaimin</p>
+                        <div class="space-y-3">
+                            <div class="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                                <p class="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Mahasiswa</p>
+                                <p class="text-lg font-bold text-gray-800">Yusril Yahya Muhaimin</p>
                             </div>
                             
-                            <div class="bg-gray-50 p-4 rounded-lg">
-                                <p class="text-sm text-gray-500 font-semibold uppercase tracking-wider">Pembimbing</p>
-                                <p class="text-lg font-medium text-gray-800">Prof. Dr. Sri Wardani, M.Si.</p>
+                            <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Pembimbing</p>
+                                <p class="text-base font-medium text-gray-800">Prof. Dr. Sri Wardani, M.Si.</p>
                             </div>
                             
-                            <div class="mt-4 text-gray-600">
+                            <div class="mt-4 text-xs md:text-sm text-gray-600 bg-white p-2 rounded border border-gray-100 shadow-sm">
                                 <p class="font-medium">Program Studi Pendidikan Dasar</p>
                                 <p>Sekolah Pascasarjana</p>
                                 <p>Universitas Negeri Semarang</p>
                             </div>
                         </div>
                     </div>
-                    <div class="w-1/3 flex flex-col items-center justify-center p-4 bg-blue-900/5">
+
+                    <!-- Area Logo (Di atas pada portrait, di kanan pada landscape) -->
+                    <div class="w-full md:w-1/3 flex flex-col items-center justify-center p-6 bg-blue-900/5 order-1 md:order-2 border-b md:border-b-0 md:border-l border-yellow-200">
                         <img src="https://unnes.ac.id/lppm/wp-content/uploads/sites/16/2015/08/Logo-Transparan-Warna-1.png" 
                              alt="Logo UNNES" 
-                             class="w-32 h-auto mb-4 drop-shadow-md"
+                             class="w-24 md:w-32 h-auto mb-2 drop-shadow-md"
                              onerror="this.src='https://placehold.co/150x150/F9E45B/003399?text=UNNES'; this.onerror=null;">
-                        <h4 class="font-bold text-lg text-blue-900 mt-2">UNNES</h4>
-                        <p class="text-[10px] font-bold text-blue-800 text-center tracking-widest">UNIVERSITAS NEGERI SEMARANG</p>
+                        <h4 class="font-bold text-base md:text-lg text-blue-900 mt-1">UNNES</h4>
+                        <p class="text-[10px] font-bold text-blue-800 text-center tracking-widest opacity-70">UNIVERSITAS NEGERI SEMARANG</p>
                     </div>
                 </div>
             </div>
         </main>
 
-        <!-- Footer Navigasi -->
-        <nav class="flex justify-around bg-white border-t p-2 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-50">
-            <button data-page="page-awal" class="nav-button flex flex-col items-center w-1/5 p-1 rounded-lg transition-colors hover:bg-gray-50" title="Halaman Awal">
-                <i data-lucide="home" class="w-6 h-6 text-blue-500"></i>
-                <span class="text-[10px] md:text-xs font-medium text-blue-500 mt-1">Beranda</span>
+        <!-- Footer Navigasi (Fixed di bawah) -->
+        <nav class="flex justify-around bg-white border-t p-2 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-50 shrink-0 pb-4 md:pb-2 safe-area-bottom">
+            <button data-page="page-awal" class="nav-button flex flex-col items-center w-1/5 p-1 rounded-lg active:bg-gray-100 transition-colors" title="Beranda">
+                <i data-lucide="home" class="w-5 h-5 md:w-6 md:h-6 text-blue-500"></i>
+                <span class="text-[9px] md:text-xs font-medium text-blue-500 mt-1">Home</span>
             </button>
-            <button data-page="page-materi" class="nav-button flex flex-col items-center w-1/5 p-1 rounded-lg transition-colors hover:bg-gray-50" title="Materi">
-                <i data-lucide="book-open" class="w-6 h-6 text-green-500"></i>
-                <span class="text-[10px] md:text-xs font-medium text-gray-500 mt-1">Materi</span>
+            <button data-page="page-materi" class="nav-button flex flex-col items-center w-1/5 p-1 rounded-lg active:bg-gray-100 transition-colors" title="Materi">
+                <i data-lucide="book-open" class="w-5 h-5 md:w-6 md:h-6 text-green-500"></i>
+                <span class="text-[9px] md:text-xs font-medium text-gray-500 mt-1">Materi</span>
             </button>
-            <button data-page="page-asesmen" class="nav-button flex flex-col items-center w-1/5 p-1 rounded-lg transition-colors hover:bg-gray-50" title="Asesmen">
-                <i data-lucide="calculator" class="w-6 h-6 text-red-500"></i>
-                <span class="text-[10px] md:text-xs font-medium text-gray-500 mt-1">Asesmen</span>
+            <button data-page="page-asesmen" class="nav-button flex flex-col items-center w-1/5 p-1 rounded-lg active:bg-gray-100 transition-colors" title="Asesmen">
+                <i data-lucide="calculator" class="w-5 h-5 md:w-6 md:h-6 text-red-500"></i>
+                <span class="text-[9px] md:text-xs font-medium text-gray-500 mt-1">Kuis</span>
             </button>
-            <button data-page="page-profil" class="nav-button flex flex-col items-center w-1/5 p-1 rounded-lg transition-colors hover:bg-gray-50" title="Profil">
-                <i data-lucide="user" class="w-6 h-6 text-yellow-500"></i>
-                <span class="text-[10px] md:text-xs font-medium text-gray-500 mt-1">Profil</span>
+            <button data-page="page-profil" class="nav-button flex flex-col items-center w-1/5 p-1 rounded-lg active:bg-gray-100 transition-colors" title="Profil">
+                <i data-lucide="user" class="w-5 h-5 md:w-6 md:h-6 text-yellow-500"></i>
+                <span class="text-[9px] md:text-xs font-medium text-gray-500 mt-1">Profil</span>
             </button>
-            <button id="exit-button" class="flex flex-col items-center w-1/5 p-1 rounded-lg transition-colors hover:bg-red-50" title="Keluar">
-                <i data-lucide="log-out" class="w-6 h-6 text-red-500"></i>
-                <span class="text-[10px] md:text-xs font-medium text-red-500 mt-1">Keluar</span>
+            <button id="exit-button" class="flex flex-col items-center w-1/5 p-1 rounded-lg active:bg-red-50 transition-colors" title="Keluar">
+                <i data-lucide="log-out" class="w-5 h-5 md:w-6 md:h-6 text-red-500"></i>
+                <span class="text-[9px] md:text-xs font-medium text-red-500 mt-1">Exit</span>
             </button>
         </nav>
     </div>
@@ -364,13 +325,12 @@
         const sensorData = {
             location: null,
             orientation: { alpha: 0, beta: 0, gamma: 0 },
-            acceleration: { x: 0, y: 0, z: 0 },
             absoluteOrientation: null, 
-            gameRotation: null, // BARU: Menyimpan data game rotation
+            gameRotation: null, 
             arSupported: false
         };
 
-        // --- Logika untuk Pemindai QR ---
+        // --- Referensi UI QR ---
         const qrVideo = document.getElementById('qr-video');
         const qrCanvas = document.getElementById('qr-canvas');
         const qrCanvasCtx = qrCanvas.getContext('2d');
@@ -400,11 +360,10 @@
             qrStatusMessage.textContent = message;
             qrStatusMessage.style.display = 'block';
             qrScannerContainer.style.display = 'none';
-            qrResultContainer.style.display = 'none';
         }
 
         async function startQrScanner() {
-            qrStatusMessage.textContent = "Membuka kamera lingkungan...";
+            qrStatusMessage.textContent = "Membuka kamera...";
             qrStatusMessage.style.display = 'block';
             qrScannerContainer.style.display = 'none';
             qrResultContainer.style.display = 'none';
@@ -421,19 +380,14 @@
                 qrAnimationLoopId = null;
             }
 
-            if (typeof jsQR === 'undefined') {
-                showQrError("Gagal memuat pustaka QR. Periksa koneksi internet.");
-                return;
-            }
-
             try {
                 qrStream = await navigator.mediaDevices.getUserMedia({ 
                     video: { facingMode: "environment" } 
                 });
 
                 qrVideo.srcObject = qrStream;
-                qrVideo.style.display = 'block';
                 
+                // Tunggu metadata untuk layout yang benar
                 qrVideo.onloadedmetadata = () => {
                     qrStatusMessage.style.display = 'none';
                     qrScannerContainer.style.display = 'block';
@@ -442,16 +396,10 @@
                 };
 
             } catch (err) {
-                console.error("Error akses kamera QR: ", err);
-                let errorMessage = "Tidak bisa mengakses kamera.";
-                if (err.name === "NotAllowedError") {
-                    errorMessage = "Akses kamera ditolak. Segarkan halaman dan izinkan.";
-                } else if (err.name === "NotFoundError") {
-                    errorMessage = "Kamera belakang tidak ditemukan.";
-                } else if (err.name === "NotReadableError") {
-                     errorMessage = "Kamera sedang digunakan aplikasi lain.";
-                }
-                showQrError(errorMessage);
+                console.error("QR Error: ", err);
+                let msg = "Gagal akses kamera.";
+                if (err.name === "NotAllowedError") msg = "Izin kamera ditolak.";
+                showQrError(msg);
             }
         }
 
@@ -463,10 +411,6 @@
             if (qrAnimationLoopId) {
                 cancelAnimationFrame(qrAnimationLoopId);
                 qrAnimationLoopId = null;
-            }
-            if (qrVideo) {
-                qrVideo.pause();
-                qrVideo.srcObject = null;
             }
         }
 
@@ -499,7 +443,7 @@
             }
 
             qrScannerContainer.style.display = 'none';
-            qrResultContainer.style.display = 'flex'; 
+            qrResultContainer.style.display = 'flex'; // Flex untuk responsive layout
             qrOutputData.value = data;
 
             const isUrl = data.startsWith('http://') || data.startsWith('https://') || (data.startsWith('www.') && !data.includes(' '));
@@ -517,28 +461,22 @@
                 qrDataPreview.style.display = 'block';
                 qrOpenLinkButton.style.display = 'none';
             }
-            
             lucide.createIcons();
         }
 
         qrCopyButton.addEventListener('click', () => {
             qrOutputData.select();
-            qrOutputData.setSelectionRange(0, 99999); // Mobile
+            qrOutputData.setSelectionRange(0, 99999); 
             try {
                 document.execCommand('copy');
                 const originalIcon = qrCopyButton.innerHTML;
-                qrCopyButton.innerHTML = '<i data-lucide="check" class="w-5 h-5"></i>';
+                qrCopyButton.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i>';
                 lucide.createIcons();
-                qrCopyButton.classList.add('bg-blue-600');
-                
                 setTimeout(() => {
-                    qrCopyButton.innerHTML = '<i data-lucide="copy" class="w-5 h-5"></i>';
+                    qrCopyButton.innerHTML = '<i data-lucide="copy" class="w-4 h-4"></i>';
                     lucide.createIcons();
-                    qrCopyButton.classList.remove('bg-blue-600');
-                }, 1500);
-            } catch (err) {
-                console.error('Gagal menyalin teks QR: ', err);
-            }
+                }, 1000);
+            } catch (err) {}
         });
 
         qrScanAgainButton.addEventListener('click', () => {
@@ -549,7 +487,7 @@
         });
 
 
-        // --- Logika Navigasi & Izin Sensor (Utama) ---
+        // --- Logika Utama ---
         document.addEventListener('DOMContentLoaded', () => {
             const appContainer = document.getElementById('app-container');
             const sensorOverlay = document.getElementById('sensor-permission-overlay');
@@ -570,128 +508,89 @@
                 sensorOverlay.style.display = 'none';
                 appContainer.style.display = 'flex';
                 lucide.createIcons();
+                // Re-check size untuk iframe/canvas saat rotasi
+                window.dispatchEvent(new Event('resize'));
                 setActivePage('page-awal');
             }
 
-            // --- FUNGSI UPDATE HUD SENSOR ---
+            // --- Helper Update HUD ---
             function updateSensorHUD(alpha, beta, gamma, isAbsolute) {
                 if (qrScannerContainer.style.display !== 'none') {
-                    hudAlpha.innerHTML = `Alpha: ${alpha ? alpha.toFixed(1) : '--'}° <span class="${isAbsolute ? 'text-green-400' : 'text-gray-400'}">${isAbsolute ? '(ABS)' : '(REL)'}</span>`;
-                    hudBeta.textContent  = `Beta : ${beta ? beta.toFixed(1) : '--'}°`;
-                    hudGamma.textContent = `Gamma: ${gamma ? gamma.toFixed(1) : '--'}°`;
+                    // Singkatkan tampilan agar muat di layar kecil
+                    hudAlpha.innerHTML = `A:${alpha ? alpha.toFixed(0) : '-'}°`;
+                    hudBeta.innerHTML  = `B:${beta ? beta.toFixed(0) : '-'}°`;
+                    hudGamma.innerHTML = `G:${gamma ? gamma.toFixed(0) : '-'}°`;
                 }
             }
             
-            // Fungsi update HUD Game Rotation (Relative)
             function updateGameRotationHUD(quaternion) {
                 if (qrScannerContainer.style.display !== 'none' && quaternion) {
-                    // Format tampilan Quaternion (X, Y, Z, W)
                     const [x, y, z, w] = quaternion;
-                    hudGameQuat.innerHTML = `Q[x:${x.toFixed(2)}, y:${y.toFixed(2)}, z:${z.toFixed(2)}, w:${w.toFixed(2)}]`;
+                    hudGameQuat.innerHTML = `X:${x.toFixed(2)} Y:${y.toFixed(2)} Z:${z.toFixed(2)}`;
                     hudGameQuat.classList.add('text-green-300');
                 }
             }
 
-            // --- SCRIPT PERMINTAAN IZIN SENSOR & AR ---
+            // --- Izin Sensor ---
             grantButton.addEventListener('click', async () => {
-                permissionStatus.textContent = "Memproses izin & Sensor...";
+                permissionStatus.textContent = "Menyiapkan...";
                 
-                // 1. Izin DeviceOrientation Standard
+                // 1. Request DeviceOrientation
                 if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    try {
-                        await DeviceOrientationEvent.requestPermission();
-                    } catch (e) {
-                        console.error("Error orientasi:", e);
-                    }
+                    try { await DeviceOrientationEvent.requestPermission(); } catch (e) {}
                 }
 
-                // 2. IMPLEMENTASI ABSOLUTE ORIENTATION (Magnetometer)
+                // 2. Absolute Orientation (Magnetometer)
                 if ('AbsoluteOrientationSensor' in window) {
                     try {
                         const sensor = new AbsoluteOrientationSensor({ frequency: 60, referenceFrame: 'device' });
-                        sensor.addEventListener('reading', () => {
-                            sensorData.absoluteOrientation = sensor.quaternion;
-                        });
+                        sensor.addEventListener('reading', () => { sensorData.absoluteOrientation = sensor.quaternion; });
                         sensor.start();
-                        console.log("AbsoluteOrientationSensor AKTIF");
-                    } catch (error) {
-                         if (error.name !== 'SecurityError') console.error(error);
+                    } catch (e) { 
+                        if(e.name !== 'SecurityError') console.warn("Absolute sensor error:", e); 
                     }
                 }
 
-                // 3. IMPLEMENTASI GAME ROTATION VECTOR (RelativeOrientationSensor) - BARU
-                // Ini adalah ekuivalen Web API untuk Sensor.TYPE_GAME_ROTATION_VECTOR di Android
+                // 3. Relative Orientation (Game Rotation)
                 if ('RelativeOrientationSensor' in window) {
                     try {
-                        // referenceFrame 'device' berarti relatif terhadap posisi awal perangkat
                         const gameSensor = new RelativeOrientationSensor({ frequency: 60, referenceFrame: 'device' });
-                        
                         gameSensor.addEventListener('reading', () => {
                             sensorData.gameRotation = gameSensor.quaternion;
                             updateGameRotationHUD(gameSensor.quaternion);
                         });
-                        
-                        gameSensor.addEventListener('error', (event) => {
-                            if (event.error.name === 'NotReadableError') {
-                                hudGameQuat.textContent = "Sensor tidak tersedia.";
-                            } else if (event.error.name === 'SecurityError') {
-                                hudGameQuat.textContent = "Sensor diblokir permission.";
-                            }
+                        gameSensor.addEventListener('error', (ev) => {
+                           hudGameQuat.textContent = (ev.error.name === 'SecurityError') ? "Blocked" : "Error";
                         });
-                        
                         gameSensor.start();
-                        console.log("RelativeOrientationSensor (Game Rotation) AKTIF");
-                        hudGameQuat.textContent = "Sensor Aktif (Mengambil data...)";
-                        
-                    } catch (error) {
-                         if (error.name === 'SecurityError') {
-                            hudGameQuat.textContent = "Diblokir Keamanan (Iframe/Browser)";
-                         } else {
-                            hudGameQuat.textContent = "Gagal inisialisasi.";
-                            console.error(error);
-                         }
-                    }
-                } else {
-                    hudGameQuat.textContent = "API tidak didukung browser ini.";
+                    } catch (e) {}
                 }
 
-                // 4. Fallback Standard (Event Listener)
+                // 4. Fallback Orientation Event
+                const orientationHandler = (event) => {
+                    let heading = event.webkitCompassHeading || event.alpha; 
+                    let isAbsolute = event.absolute || (event.webkitCompassHeading !== undefined);
+                    updateSensorHUD(heading, event.beta, event.gamma, isAbsolute);
+                };
+
                 if ('ondeviceorientationabsolute' in window) {
-                    window.addEventListener('deviceorientationabsolute', (event) => {
-                        updateSensorHUD(event.alpha, event.beta, event.gamma, true);
+                    window.addEventListener('deviceorientationabsolute', (e) => {
+                         updateSensorHUD(e.alpha, e.beta, e.gamma, true);
                     });
                 } else {
-                    window.addEventListener('deviceorientation', (event) => {
-                        let heading = event.webkitCompassHeading || event.alpha; 
-                        let isAbsolute = event.absolute || (event.webkitCompassHeading !== undefined);
-                        updateSensorHUD(heading, event.beta, event.gamma, isAbsolute);
-                    });
+                    window.addEventListener('deviceorientation', orientationHandler);
                 }
 
-                // 5. Pemanasan Kamera & Lainnya
+                // 5. Pemanasan Kamera
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
                     stream.getTracks().forEach(track => track.stop());
                 } catch (e) {}
 
-                permissionStatus.textContent = "Selesai!";
-                setTimeout(showApp, 800);
+                setTimeout(showApp, 500);
             });
 
-            // Orientasi Handler
-            if (window.matchMedia("(orientation: landscape)").matches) {
-                sensorOverlay.style.display = 'flex';
-                appContainer.style.display = 'none';
-            }
-
-            window.matchMedia("(orientation: portrait)").addEventListener("change", (e) => {
-                if (!e.matches) { 
-                    if (appContainer.style.display === 'none' && sensorOverlay.style.display === 'none') {
-                        sensorOverlay.style.display = 'flex';
-                    }
-                }
-            });
-            
+            // --- Navigasi ---
             function setActivePage(pageId) {
                 pages.forEach(page => page.classList.add('hidden'));
                 const activePage = document.getElementById(pageId);
@@ -699,12 +598,27 @@
                 
                 navButtons.forEach(button => {
                     const span = button.querySelector('span');
+                    const icon = button.querySelector('svg'); // Lucide mereplace i dengan svg
                     const buttonPageId = button.dataset.page;
+                    
                     span.classList.remove(...Object.values(activeColors));
                     span.classList.add('text-gray-500');
+                    
+                    if(icon) {
+                        icon.classList.remove('text-blue-500', 'text-green-500', 'text-red-500', 'text-yellow-500');
+                        icon.classList.add('text-gray-400'); // Default non-aktif
+                    }
+
                     if (buttonPageId === pageId) {
                         span.classList.remove('text-gray-500');
                         span.classList.add(activeColors[pageId]);
+                        
+                        if(icon) {
+                            icon.classList.remove('text-gray-400');
+                            // Extract warna dari class text-*-500 di activeColors
+                            const colorClass = activeColors[pageId];
+                            icon.classList.add(colorClass);
+                        }
                     }
                 });
 
@@ -729,6 +643,14 @@
                      if(confirm("Keluar aplikasi?")) window.close();
                 });
             }
+
+            // Deteksi Resize untuk menyesuaikan UI jika user memutar HP setelah load
+            window.addEventListener('resize', () => {
+                // Jika scanner aktif, pastikan video menyesuaikan
+                if(!document.getElementById('page-materi').classList.contains('hidden')) {
+                    // logik CSS object-fit: cover sudah menghandle, tapi kita trigger layout recalc
+                }
+            });
         });
     </script>
 </body>
