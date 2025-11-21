@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <!-- Viewport setting untuk mencegah zoom yang tidak disengaja dan memastikan skala 1:1 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>NUMERASIYU - HD 720p</title>
+    <title>NUMERASIYU</title>
     
     <!-- Memuat Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -118,12 +118,11 @@
                              class="w-full h-full object-contain rounded-2xl"
                              onerror="this.src='https://placehold.co/200x200/FFD700/000000?text=Numerasiyu'; this.onerror=null;">
                     </div>
-                    
                     <div class="bg-white px-8 py-4 rounded-xl shadow-md border-l-4 border-blue-500 mb-6">
                         <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-yellow-500">NUMERASIYU</h1>
                     </div>
                     <div class="h-1 w-16 bg-yellow-400 rounded-full mb-4 shadow-sm"></div>
-                    <p class="text-gray-700 text-sm md:text-base font-bold bg-white/50 backdrop-blur-sm px-4 py-1 rounded-full">Ayo belajar data <br>Berbasis Augmented Reality</p>
+                    <p class="text-gray-700 text-sm md:text-base font-bold bg-white/50 backdrop-blur-sm px-4 py-1 rounded-full">Media Pembelajaran Interaktif<br>Berbasis Augmented Reality</p>
                     
                     <div class="mt-8 grid grid-cols-2 gap-3 w-full px-4">
                         <div class="bg-white/90 backdrop-blur p-3 rounded-lg border border-blue-100 shadow-md flex flex-col items-center gap-1 hover:bg-white transition-colors">
@@ -177,7 +176,7 @@
                             <div id="qr-scanner-container" class="absolute inset-0 hidden group">
                                 <video id="qr-video" playsinline muted autoplay></video>
                                 
-                                <!-- Tombol Fullscreen (BARU) -->
+                                <!-- Tombol Fullscreen -->
                                 <button id="scanner-fullscreen-btn" class="absolute top-4 right-4 z-30 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full backdrop-blur-sm transition-all pointer-events-auto">
                                     <i data-lucide="maximize" class="w-5 h-5"></i>
                                 </button>
@@ -223,6 +222,32 @@
                                     <button id="qr-scanAgainButton" class="flex-1 bg-blue-600 text-white py-2 rounded-lg text-xs font-bold hover:bg-blue-700">Scan Lagi</button>
                                 </div>
                             </div>
+
+                            <!-- BROWSER IN-APP (BARU) -->
+                            <div id="browser-container" class="absolute inset-0 bg-white z-40 hidden flex-col">
+                                <div class="bg-blue-50 p-2 border-b border-blue-100 flex items-center justify-between shrink-0 shadow-sm">
+                                    <div class="flex items-center gap-2 text-blue-800">
+                                        <i data-lucide="search" class="w-4 h-4"></i>
+                                        <span class="text-xs font-bold">Google Search</span>
+                                    </div>
+                                    <button id="close-browser-btn" class="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors">
+                                        <i data-lucide="x" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                                <!-- igu=1 Memungkinkan Google dimuat di iframe pada beberapa browser -->
+                                <iframe id="browser-frame" class="flex-1 w-full h-full border-0" src="about:blank" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+                            </div>
+
+                        </div>
+
+                        <!-- SCANNER CONTROL BAR -->
+                        <div class="p-2 bg-gray-50 border-t border-gray-200 flex justify-center gap-3 shrink-0 shadow-inner">
+                            <button id="manual-scan-btn" class="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-full shadow hover:bg-blue-700 active:scale-95 transition-all text-xs font-bold">
+                                <i data-lucide="qr-code" class="w-4 h-4"></i> Scan QR
+                            </button>
+                            <button id="google-browse-btn" class="flex items-center gap-2 bg-white text-gray-700 border border-gray-300 px-4 py-2 rounded-full shadow hover:bg-gray-100 active:scale-95 transition-all text-xs font-bold">
+                                <i data-lucide="globe" class="w-4 h-4 text-blue-500"></i> Google
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -253,8 +278,8 @@
                                  class="w-32 h-auto mx-auto mb-4 drop-shadow-sm hover:scale-110 transition-transform" 
                                  alt="UNNES"
                                  onerror="this.src='https://placehold.co/150x150/F9E45B/003399?text=UNNES'; this.onerror=null;">
-                            <h3 class="font-bold text-blue-900 text-lg">2499010072</h3>
-                            <p class="text-[10px] font-bold tracking-widest text-blue-400 uppercase">2025</p>
+                            <h3 class="font-bold text-blue-900 text-lg">UNNES</h3>
+                            <p class="text-[10px] font-bold tracking-widest text-blue-400 uppercase">Universitas Negeri Semarang</p>
                         </div>
                     </div>
                     <!-- Kanan: Info -->
@@ -336,13 +361,20 @@
             qrResult: document.getElementById('qr-result-container'),
             qrOutput: document.getElementById('qr-outputData'),
             qrFrame: document.getElementById('qr-outputFrame'),
-            fullscreenBtn: document.getElementById('scanner-fullscreen-btn'), // Tombol Baru
+            fullscreenBtn: document.getElementById('scanner-fullscreen-btn'),
+            
+            // Browser UI (BARU)
+            browserContainer: document.getElementById('browser-container'),
+            browserFrame: document.getElementById('browser-frame'),
+            closeBrowserBtn: document.getElementById('close-browser-btn'),
             
             // Buttons
             copyBtn: document.getElementById('qr-copyButton'),
             linkBtn: document.getElementById('qr-openLinkButton'),
             scanAgainBtn: document.getElementById('qr-scanAgainButton'),
             exitBtnNav: document.getElementById('exit-button-nav'),
+            manualScanBtn: document.getElementById('manual-scan-btn'),
+            googleBtn: document.getElementById('google-browse-btn'),
             
             // HUD
             hudA: document.getElementById('hud-alpha'),
@@ -367,14 +399,13 @@
                 active.classList.add('animate-fade-in');
             }
 
-            // Update Nav Styles (Warna Khusus per Menu)
+            // Update Nav Styles
             els.navBtns.forEach(btn => {
                 const icon = btn.querySelector('svg');
                 const text = btn.querySelector('span');
                 const isActive = btn.dataset.page === pageId;
                 const pageName = btn.dataset.page;
                 
-                // Reset base classes (Default: Abu-abu Gelap)
                 if(icon) {
                     icon.setAttribute('class', `w-5 h-5 group-hover:scale-110 transition-transform ${isActive ? '' : 'text-gray-800'}`);
                 }
@@ -382,17 +413,14 @@
                     text.setAttribute('class', `text-[10px] mt-1 ${isActive ? 'font-extrabold' : 'font-bold text-gray-800'}`);
                 }
                 
-                // Apply Active Colors
                 if(isActive) {
                     btn.classList.add('bg-white/40', 'shadow-sm');
                     
-                    // Warna Khusus berdasarkan Halaman
-                    let activeColorClass = 'text-gray-900'; // Fallback
-                    
-                    if (pageName === 'page-awal') activeColorClass = 'text-sky-600'; // Biru Muda
-                    else if (pageName === 'page-materi') activeColorClass = 'text-green-600'; // Hijau
-                    else if (pageName === 'page-asesmen') activeColorClass = 'text-red-600'; // Merah
-                    else if (pageName === 'page-profil') activeColorClass = 'text-blue-900'; // Biru Tua
+                    let activeColorClass = 'text-gray-900'; 
+                    if (pageName === 'page-awal') activeColorClass = 'text-sky-600';
+                    else if (pageName === 'page-materi') activeColorClass = 'text-green-600';
+                    else if (pageName === 'page-asesmen') activeColorClass = 'text-red-600';
+                    else if (pageName === 'page-profil') activeColorClass = 'text-blue-900';
                     
                     if(icon) icon.classList.add(activeColorClass);
                     if(text) text.classList.add(activeColorClass);
@@ -402,7 +430,6 @@
                 }
             });
 
-            // Handle QR State
             if(pageId === 'page-materi') {
                 startQR();
             } else {
@@ -414,7 +441,6 @@
         const initSensors = async () => {
             els.status.textContent = "Menghubungkan ke sensor perangkat...";
             
-            // 1. Device Orientation
             if (typeof DeviceOrientationEvent?.requestPermission === 'function') {
                 try { await DeviceOrientationEvent.requestPermission(); } catch(e){}
             }
@@ -422,12 +448,10 @@
             const handleOrientation = (e) => {
                 const heading = e.webkitCompassHeading || e.alpha;
                 const isAbs = e.absolute || (e.webkitCompassHeading !== undefined);
-                
                 state.sensor.alpha = heading;
                 state.sensor.beta = e.beta;
                 state.sensor.gamma = e.gamma;
                 state.sensor.isAbsolute = isAbs;
-                
                 updateHUD();
             };
 
@@ -437,7 +461,6 @@
                 window.addEventListener('deviceorientation', handleOrientation);
             }
 
-            // 2. Modern Sensors
             if ('AbsoluteOrientationSensor' in window) {
                 try {
                     const absSensor = new AbsoluteOrientationSensor({ frequency: 60, referenceFrame: 'device' });
@@ -463,7 +486,6 @@
             if(els.qrContainer.offsetParent === null) return;
 
             const { alpha, beta, gamma, gameQuat } = state.sensor;
-            
             els.hudA.textContent = `A:${alpha?.toFixed(0) || '-'}`;
             els.hudB.textContent = `B:${beta?.toFixed(0) || '-'}`;
             els.hudG.textContent = `G:${gamma?.toFixed(0) || '-'}`;
@@ -472,12 +494,13 @@
                 const [x,y,z,w] = gameQuat;
                 els.hudQ.textContent = `x${x.toFixed(1)} y${y.toFixed(1)} z${z.toFixed(1)}`;
             }
-
             els.sensorInd?.classList.toggle('bg-green-500', true);
         };
 
         // --- LOGIKA QR SCANNER ---
         const startQR = async () => {
+            // Jangan start jika browser aktif
+            if(!els.browserContainer.classList.contains('hidden')) return;
             if(state.qr.active) return;
             
             try {
@@ -527,7 +550,6 @@
             if (els.qrVideo.readyState === els.qrVideo.HAVE_ENOUGH_DATA) {
                 els.qrCanvas.height = els.qrVideo.videoHeight;
                 els.qrCanvas.width = els.qrVideo.videoWidth;
-                
                 els.qrCtx.drawImage(els.qrVideo, 0, 0, els.qrCanvas.width, els.qrCanvas.height);
                 const imageData = els.qrCtx.getImageData(0, 0, els.qrCanvas.width, els.qrCanvas.height);
                 const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
@@ -563,19 +585,13 @@
         // --- LOGIKA FULLSCREEN ---
         els.fullscreenBtn.addEventListener('click', () => {
             if (!document.fullscreenElement) {
-                els.qrContainer.requestFullscreen().catch(err => {
-                    alert(`Gagal fullscreen: ${err.message}`);
-                });
+                els.qrContainer.requestFullscreen().catch(err => alert(`Gagal: ${err.message}`));
             } else {
                 document.exitFullscreen();
             }
         });
 
-        // Ubah ikon toggle fullscreen
         document.addEventListener('fullscreenchange', () => {
-            const icon = els.fullscreenBtn.querySelector('svg');
-            // Kita perlu re-init icon atau swap manual karena Lucide merender SVG
-            // Cara sederhana: ganti innerHTML
             if (document.fullscreenElement) {
                 els.fullscreenBtn.innerHTML = '<i data-lucide="minimize" class="w-5 h-5"></i>';
             } else {
@@ -589,13 +605,11 @@
         els.grantBtn.addEventListener('click', async () => {
             els.grantBtn.disabled = true;
             els.grantBtn.textContent = "Menyiapkan...";
-            
             await initSensors();
             try {
                 const s = await navigator.mediaDevices.getUserMedia({ video: {facingMode: 'environment'} });
                 s.getTracks().forEach(t => t.stop());
             } catch(e){}
-
             els.overlay.classList.add('opacity-0');
             setTimeout(() => {
                 els.overlay.style.display = 'none';
@@ -640,6 +654,44 @@
             const originalText = els.copyBtn.textContent;
             els.copyBtn.textContent = "Tersalin!";
             setTimeout(() => els.copyBtn.textContent = originalText, 1500);
+        });
+
+        // Event Listener Manual Scan
+        els.manualScanBtn.addEventListener('click', () => {
+            els.browserContainer.classList.add('hidden'); // Tutup browser jika ada
+            els.qrResult.classList.add('hidden');
+            els.qrResult.classList.remove('flex');
+            
+            if(els.qrVideo.paused || !state.qr.active) {
+                startQR();
+            } else {
+                els.qrVideo.play();
+            }
+            scanTick();
+        });
+
+        // Event Listener Google (In-App)
+        els.googleBtn.addEventListener('click', () => {
+            // Stop QR untuk hemat resource & sembunyikan
+            stopQR();
+            els.qrContainer.classList.add('hidden');
+            
+            // Tampilkan Browser
+            els.browserContainer.classList.remove('hidden');
+            els.browserContainer.classList.add('flex');
+            
+            // Load Google (igu=1 trick)
+            if(els.browserFrame.src === 'about:blank') {
+                els.browserFrame.src = 'https://www.google.com/webhp?igu=1';
+            }
+        });
+
+        // Event Listener Close Browser
+        els.closeBrowserBtn.addEventListener('click', () => {
+            els.browserContainer.classList.add('hidden');
+            els.browserContainer.classList.remove('flex');
+            // Kembali ke QR
+            startQR();
         });
 
         window.addEventListener('resize', () => {
