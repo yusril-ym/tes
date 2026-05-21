@@ -1,0 +1,88 @@
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+.card {
+  @apply bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm;
+}
+
+.section-title {
+  @apply text-2xl font-bold mb-2;
+}
+
+.section-description {
+  @apply text-slate-500 dark:text-slate-400;
+}
+
+.requirement-item {
+  @apply flex gap-4 p-4 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition;
+}
+
+.disabled-section {
+  opacity: .5;
+  pointer-events: none;
+}
+
+.step-btn {
+  @apply px-4 py-2 rounded-xl border font-semibold transition;
+}
+
+.step-btn.active {
+  @apply bg-blue-600 text-white border-blue-600;
+}
+
+.step-btn.completed {
+  @apply bg-emerald-100 text-emerald-700 border-emerald-300;
+}
+
+.step-btn.locked {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+.primary-btn {
+  @apply bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl transition;
+}
+
+.secondary-btn {
+  @apply bg-slate-200 dark:bg-slate-700 px-6 py-3 rounded-xl;
+}
+
+.code-box {
+  @apply flex justify-between items-center bg-slate-900 text-emerald-400 rounded-xl p-4 overflow-x-auto;
+}
+
+.copy-btn {
+  @apply bg-blue-600 text-white px-4 py-2 rounded-lg;
+}
+
+.warning-box {
+  @apply bg-amber-100 text-amber-800 rounded-xl p-4;
+}
+
+.accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height .4s ease;
+}
+
+.accordion-inner {
+  padding: 1rem;
+}
+
+#toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+}
+
+.toast {
+  background: #0f172a;
+  color: white;
+  padding: 1rem 1.2rem;
+  border-radius: 12px;
+  margin-bottom: 10px;
+}
+
+#scroll-top-btn {
+}
